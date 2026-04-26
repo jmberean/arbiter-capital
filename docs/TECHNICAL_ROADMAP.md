@@ -1,6 +1,6 @@
 # Arbiter Capital - Technical Roadmap & Implementation Plan (v3.0)
 
-This document provides a highly technical, step-by-step roadmap for implementing the Arbiter Capital Autonomous Family Office, as specified in `system-design.md`. The implementation is broken down into structured Minimum Viable Products (MVPs) to ensure systematic progress from local simulation to full decentralized execution.
+This document provides a highly technical, step-by-step roadmap for implementing the Arbiter Capital Autonomous Family Office, as specified in `SYSTEM_DESIGN.md`. The implementation is broken down into structured Minimum Viable Products (MVPs) to ensure systematic progress from local simulation to full decentralized execution.
 
 ---
 

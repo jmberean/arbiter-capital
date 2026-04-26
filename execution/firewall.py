@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("PolicyFirewall")
 
 # Hardcoded Constraints
-WHITELISTED_ASSETS = ["WETH", "USDC", "SOL", "WBTC", "stETH", "PT-USDC"]
+WHITELISTED_ASSETS = ["WETH", "USDC", "SOL", "WBTC", "stETH", "PT-USDC", "LST"]
 MAX_TRANSACTION_VALUE_USD = 50000.0
 REQUIRED_ARCHITECTURE = "Uniswap_V4"
 
@@ -20,7 +20,8 @@ class MarketOracle:
             "SOL": 150.0,
             "WBTC": 65000.0,
             "stETH": 3510.0,
-            "PT-USDC": 0.92
+            "PT-USDC": 0.92,
+            "LST": 3500.0
         }
 
     def get_price(self, asset: str) -> float:

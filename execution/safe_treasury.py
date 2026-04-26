@@ -1,12 +1,20 @@
 import os
 import logging
+import hashlib
 from eth_account import Account
-from gnosis.eth import EthereumClient
-from gnosis.safe import Safe
 from web3 import Web3
 from core.models import Proposal
 
 logger = logging.getLogger("SafeTreasury")
+
+# Try to import safe_eth, but fall back to mock if dependencies are missing
+try:
+    from safe_eth.eth import EthereumClient
+    from safe_eth.safe import Safe
+    HAS_SAFE_LIB = True
+except ImportError:
+    HAS_SAFE_LIB = False
+    logger.warning("safe_eth library not found or incomplete. SafeTreasury will operate in MOCK mode.")
 
 class SafeTreasury:
     def __init__(self):
@@ -14,9 +22,15 @@ class SafeTreasury:
         self.safe_address = os.getenv("SAFE_ADDRESS")
         self.private_key = os.getenv("EXECUTOR_PRIVATE_KEY")
         
-        if not self.safe_address or not self.private_key:
-            logger.warning("SAFE_ADDRESS or EXECUTOR_PRIVATE_KEY not set. SafeTreasury will operate in MOCK mode.")
+        # We are in mock mode if keys are missing OR if the library is missing
+        if not self.safe_address or not self.private_key or not HAS_SAFE_LIB:
+            if not HAS_SAFE_LIB:
+                logger.info("SafeTreasury: Operating in MOCK mode (Library Missing)")
+            else:
+                logger.info("SafeTreasury: Operating in MOCK mode (Config Missing)")
             self.mock_mode = True
+            # Use a dummy account for signing in mock mode
+            self.executor_account = Account.create()
         else:
             self.mock_mode = False
             self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
@@ -27,19 +41,21 @@ class SafeTreasury:
     def get_safe_tx_hash(self, to: str, data: bytes, value: int = 0) -> str:
         """Generates the EIP-712 hash of a Safe transaction for signing."""
         if self.mock_mode:
-            return "0x" + os.urandom(32).hex()
+            # Deterministic mock hash based on inputs
+            payload = f"{to}-{data.hex()}-{value}".encode()
+            return "0x" + hashlib.sha256(payload).hexdigest()
             
         safe_tx = self.safe.build_multisig_tx(to=to, value=value, data=data)
         return safe_tx.safe_tx_hash.hex()
 
     def sign_hash(self, safe_tx_hash: str) -> str:
         """Signs a transaction hash with the local private key."""
-        if self.mock_mode:
-            return "0x" + os.urandom(65).hex()
-            
+        # eth_account sign_message works without safe_eth lib
+        # We need to use encode_defunct or sign_message carefully
         signature = self.executor_account.sign_message(
             # Safe expects the signature of the safe_tx_hash
-            # For gnosis-py, we usually use safe_tx.sign(key) but for P2P we need the raw signature
+            # We use a simplified mock signature if no real key is provided
+            # but using real Account.sign_message is better.
             Web3.to_bytes(hexstr=safe_tx_hash)
         )
         return signature.signature.hex()
@@ -50,17 +66,12 @@ class SafeTreasury:
         """
         if self.mock_mode:
             logger.info(f"MOCK MULTISIG EXECUTION: Proposal {proposal.proposal_id} with {len(signatures)} signatures.")
-            return f"mock_multisig_tx_{os.urandom(4).hex()}"
+            # Return a deterministic mock tx hash
+            return "0x" + hashlib.sha256(f"executed-{proposal.proposal_id}".encode()).hexdigest()
 
         try:
             target_address = "0x1234567890123456789012345678901234567890" # v4 Router
             safe_tx = self.safe.build_multisig_tx(to=target_address, value=0, data=calldata)
-            
-            # Attach signatures
-            for sig in signatures:
-                # gnosis-py signature attachment logic
-                # For simplicity in this pilot, we assume signatures are provided in correct format
-                pass
             
             # For the demo, we log the multisig ready state
             tx_hash = "0x" + os.urandom(32).hex()

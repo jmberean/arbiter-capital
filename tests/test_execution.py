@@ -3,10 +3,10 @@ import unittest.mock as mock
 import sys
 import os
 
-# Mock the gnosis and eth_account modules before they are imported by SafeTreasury
-sys.modules["gnosis"] = mock.MagicMock()
-sys.modules["gnosis.eth"] = mock.MagicMock()
-sys.modules["gnosis.safe"] = mock.MagicMock()
+# Mock the safe_eth and eth_account modules before they are imported by SafeTreasury
+sys.modules["safe_eth"] = mock.MagicMock()
+sys.modules["safe_eth.eth"] = mock.MagicMock()
+sys.modules["safe_eth.safe"] = mock.MagicMock()
 sys.modules["eth_account"] = mock.MagicMock()
 
 from core.models import Proposal, ActionType, ConsensusStatus
