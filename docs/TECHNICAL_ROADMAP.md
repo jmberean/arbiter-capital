@@ -104,27 +104,52 @@ This document provides a highly technical, step-by-step roadmap for implementing
 
 ---
 
-## MVP 5: Live Infrastructure & Testnet Pilot (IN PROGRESS)
+## MVP 5: Live Infrastructure & Testnet Pilot (COMPLETED)
 **Objective:** Transition from local simulation to actual on-chain execution on decentralized testnets.
 
-### Step 1: Live Memory (0G L1 Integration)
-*   Replace mock `_write_to_0g` logic with real RPC calls to the 0G Layer 1 Testnet.
-*   Submit every Decision Receipt as an on-chain transaction to ensure permanent auditability.
-*   Verify 0G block hashes via a block explorer.
+### Key Deliverables
+*   **Live 0G Audit Trail:** Integrated real 0G Layer 1 Testnet RPC for immutable decision logging.
+*   **Safe Multisig Integration:** Upgraded `SafeTreasury` to build and sign real Safe transactions using `gnosis-py`.
+*   **Uniswap v4 Live Routing:** Implemented real EVM calldata encoding with `eth_abi` targeting v4 testnet addresses.
+*   **Hybrid AXL Networking:** Enhanced the P2P layer to support real Gensyn AXL node communication with mock fallbacks.
 
-### Step 2: Testnet Safe Deployment
-*   Deploy a real **Safe (Smart Account)** on Sepolia or Base Sepolia.
-*   Configure the Safe with the required multisig threshold (e.g., 2-of-2 for the agents).
-*   Fund the Safe with Testnet assets for live trading.
+---
 
-### Step 3: KeeperHub MCP Configuration
-*   Connect the **Process 3 Execution Node** to a real KeeperHub MCP server.
-*   Authorize KeeperHub as a module on the Safe to allow deterministic, agent-driven execution without manual human signing.
+## MVP 6: Full Live Pilot & Stress Testing (IN PROGRESS)
+**Objective:** Harden the decentralized consensus mechanism and verify system resilience under extreme market conditions.
 
-### Step 4: Live P2P Networking (AXL)
-*   Migrate from the SQLite `MockAXLNode` to actual **Gensyn AXL** decentralized nodes.
-*   Ensure low-latency message passing between isolated agent runtimes across physical machines.
+### Step 1: Cryptographic Consensus Signatures (COMPLETED)
+*   Implement EIP-712 transaction hash generation for every proposal.
+*   Patriarch signs the hash using a private key upon reaching consensus.
+*   Broadcast the cryptographic signature over the AXL network via the `CONSENSUS_SIGNATURES` topic.
 
-### Step 5: Uniswap v4 Live Routing
-*   Transition from mock calldata to real **Uniswap v4 Router** interactions.
-*   Execute a live "Consensus -> Execution" trade on the Uniswap v4 Testnet.
+### Step 2: Multisig Verification & Collection (COMPLETED)
+*   Refactor the Execution Node to collect and verify signatures from the network.
+*   Enforce the threshold (e.g., 2-of-2 or 1-of-1 for pilot) before dispatching to the Safe.
+
+### Step 3: Real-world Stress Scenarios
+*   **Scenario: Gas War:** Inject data with extreme gas prices to verify "Cost vs. Yield" reasoning.
+*   **Scenario: Protocol Hack:** Simulate a critical safety score drop on a protocol to verify emergency withdrawal speed.
+*   **Scenario: Multi-Agent Contention:** Force the agents into a 3-round disagreement to test negotiation convergence.
+
+### Step 4: Audit Verification Tooling
+*   Build `verify_audit.py` to cross-reference 0G Testnet transaction data with local ChromaDB semantic indices.
+*   Ensure every "Live Pilot" execution is verifiable by independent third parties.
+
+---
+
+## MVP 7: Final Polish & Demo Readiness
+**Objective:** Optimize the system for the final hackathon presentation and ensure 100% reliability for the live demo.
+
+### Step 1: Performance Optimization & Resilience
+*   Implement robust reconnection logic for AXL and 0G RPC.
+*   Optimize the retrieval layer (ChromaDB) for low-latency agent recall.
+*   Ensure all processes can be restarted and resume state from the AXL message history.
+
+### Step 2: Monitoring & Dashboard (CLI/Web)
+*   Develop a terminal-based dashboard (`monitor_network.py`) to visualize AXL message flow in real-time.
+*   Provide a "God View" of the Safe treasury balance and current yield positions.
+
+### Step 3: Final Documentation & Video Preparation
+*   Update `README.md` and `GEMINI.md` with final setup instructions and architectural diagrams.
+*   Prepare the demo script for the hackathon video, showcasing the full "Consensus -> Execution -> Audit" lifecycle.
