@@ -3,3 +3,4 @@ langchain-anthropic
 pydantic
 python-dotenv
 chromadb
+pytest

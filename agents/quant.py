@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import TypedDict, Annotated, Sequence
+from typing import TypedDict, Annotated, Sequence, Optional
 import operator
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
@@ -55,7 +55,7 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
     market_data: dict
     quant_analysis: dict
-    current_proposal: Proposal | None
+    current_proposal: Optional[Proposal]
     iteration: int
 
 # --- Nodes ---

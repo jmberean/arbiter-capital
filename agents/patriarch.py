@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import TypedDict, Annotated, Sequence
+from typing import TypedDict, Annotated, Sequence, Optional
 import operator
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
@@ -18,8 +18,8 @@ logger = logging.getLogger("PatriarchAgent")
 # --- Agent State ---
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
-    incoming_proposal: Proposal | None
-    reviewed_proposal: Proposal | None
+    incoming_proposal: Optional[Proposal]
+    reviewed_proposal: Optional[Proposal]
 
 # --- Nodes ---
 def evaluate_proposal(state: AgentState):
