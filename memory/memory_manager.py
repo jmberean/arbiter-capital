@@ -4,6 +4,7 @@ import time
 import hashlib
 import logging
 import chromadb
+from typing import Optional, List, Dict
 from chromadb.utils import embedding_functions
 from web3 import Web3
 from eth_account import Account
@@ -15,8 +16,9 @@ logger = logging.getLogger("MemoryManager")
 ZERO_G_STORAGE_PATH = os.path.join(os.path.dirname(__file__), "..", "0g_storage")
 
 class MemoryManager:
-    def __init__(self):
-        os.makedirs(ZERO_G_STORAGE_PATH, exist_ok=True)
+    def __init__(self, storage_path: Optional[str] = None, db_path: Optional[str] = None):
+        self.storage_path = storage_path or os.path.join(os.path.dirname(__file__), "..", "0g_storage")
+        os.makedirs(self.storage_path, exist_ok=True)
         
         # Initialize 0G Layer 1 Connection
         self.zero_g_rpc = os.getenv("ZERO_G_RPC_URL")
@@ -36,18 +38,17 @@ class MemoryManager:
             logger.warning("ZERO_G_RPC_URL or ZERO_G_PRIVATE_KEY missing/invalid. Memory will operate in MOCK mode.")
             self.live_mode = False
 
-        # Initialize ChromaDB client with retry logic for concurrent process initialization
-        db_path = os.path.join(os.path.dirname(__file__), "..", "chroma_db")
-        # ... (rest of __init__ is unchanged)
+        # Initialize ChromaDB client with retry logic
+        self.db_path = db_path or os.path.join(os.path.dirname(__file__), "..", "chroma_db")
         for attempt in range(5):
             try:
-                self.chroma_client = chromadb.PersistentClient(path=db_path)
+                self.chroma_client = chromadb.PersistentClient(path=self.db_path)
                 break
             except Exception as e:
                 logger.warning(f"ChromaDB init failed, retrying ({attempt+1}/5): {e}")
                 time.sleep(1)
         else:
-            self.chroma_client = chromadb.PersistentClient(path=db_path)
+            self.chroma_client = chromadb.PersistentClient(path=self.db_path)
             
         # Use OpenAI embeddings for the Retrieval Layer
         openai_ef = embedding_functions.OpenAIEmbeddingFunction(
@@ -88,8 +89,7 @@ class MemoryManager:
                 logger.info(f"Permanently written to 0G Testnet. Tx Hash: {tx_hash}")
                 
                 # Still write to local storage as a cache/backup
-                zero_g_hash = hashlib.sha256(receipt_str.encode('utf-8')).hexdigest()
-                file_path = os.path.join(ZERO_G_STORAGE_PATH, f"{tx_hash}.json")
+                file_path = os.path.join(self.storage_path, f"{tx_hash}.json")
                 with open(file_path, "w") as f:
                     f.write(receipt_str)
                 
@@ -97,11 +97,10 @@ class MemoryManager:
                 
             except Exception as e:
                 logger.error(f"Failed to write to 0G Testnet: {e}. Falling back to local hash.")
-                # Fall through to mock logic if transaction fails
 
         # Mock/Fallback logic
         zero_g_hash = hashlib.sha256(receipt_str.encode('utf-8')).hexdigest()
-        file_path = os.path.join(ZERO_G_STORAGE_PATH, f"{zero_g_hash}.json")
+        file_path = os.path.join(self.storage_path, f"{zero_g_hash}.json")
         with open(file_path, "w") as f:
             f.write(receipt_str)
             
@@ -120,7 +119,7 @@ class MemoryManager:
         zero_g_hash = self._write_to_0g(decision_receipt)
         
         # 2. Index in ChromaDB (Retrieval Layer)
-        doc_id = f"dec_{int(time.time())}"
+        doc_id = f"dec_{int(time.time())}_{hashlib.md5(zero_g_hash.encode()).hexdigest()[:8]}"
         
         # We embed the rationale and the transcript to allow semantic search
         searchable_text = f"Action: {proposal.get('action')} {proposal.get('asset_in')} to {proposal.get('asset_out')}. Rationale: {proposal.get('rationale')}. Debate: {transcript}"
@@ -153,7 +152,7 @@ class MemoryManager:
         for i, meta in enumerate(results['metadatas'][0]):
             zero_g_hash = meta["0g_hash"]
             # Retrieve from 0G base layer
-            file_path = os.path.join(ZERO_G_STORAGE_PATH, f"{zero_g_hash}.json")
+            file_path = os.path.join(self.storage_path, f"{zero_g_hash}.json")
             if os.path.exists(file_path):
                 with open(file_path, "r") as f:
                     receipt = json.load(f)

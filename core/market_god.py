@@ -42,6 +42,17 @@ def generate_market_data(scenario: str = "normal"):
         base_data["market_sentiment"] = "panic"
         base_data["events"].append("CRITICAL: Major Solana Staking Protocol exploited.")
         
+    elif scenario == "flash_crash_eth":
+        base_data["assets"]["WETH"]["price"] = 2800.0
+        base_data["assets"]["WETH"]["volatility_48h"] = 0.45
+        base_data["market_sentiment"] = "panic"
+        base_data["events"].append("Flash Crash: ETH dropped 20% in 15 minutes.")
+
+    elif scenario == "sol_yield_spike" or scenario == "cross_chain_alpha":
+        base_data["assets"]["SOL"]["staking_yield"] = 0.12
+        base_data["market_sentiment"] = "greedy"
+        base_data["events"].append("Solana Surge: Cross-chain liquidity incentives live on SOL.")
+
     elif scenario == "gas_war":
         base_data["network"]["gas_price_gwei"] = 850.0
         
