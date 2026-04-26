@@ -15,12 +15,14 @@ def run_quant_daemon():
     axl_node = MockAXLNode(node_id="Quant_Node_A")
     last_market_id = 0
     last_feedback_id = 0
+    last_execution_id = 0
     
-    logger.info("Quant listening for Market Data and Patriarch Feedback...")
+    logger.info("Quant listening for Market Data, Patriarch Feedback, and Execution Status...")
     
     while True:
         try:
             # 1. Listen for new market data
+            # ... (existing market data loop)
             market_messages = axl_node.subscribe(topic="MARKET_DATA", last_id=last_market_id)
             for msg in market_messages:
                 last_market_id = msg["id"]
@@ -47,8 +49,13 @@ def run_quant_daemon():
                 evaluation = msg["payload"]
                 if evaluation["consensus_status"] == ConsensusStatus.REJECTED.value:
                     logger.warning(f"Quant received REJECTION for {evaluation['proposal_id']}. Rationale: {evaluation['rationale']}")
-                    # In a real implementation, the Quant would take this rationale and iterate.
-                    # For MVP2, we log the feedback.
+
+            # 3. Listen for execution success notifications
+            execution_messages = axl_node.subscribe(topic="EXECUTION_SUCCESS", last_id=last_execution_id)
+            for msg in execution_messages:
+                last_execution_id = msg["id"]
+                execution_data = msg["payload"]
+                logger.info(f"🎉 CONFIRMATION: Proposal {execution_data['proposal_id']} executed successfully on-chain! Tx: {execution_data['tx_hash']}")
 
             time.sleep(2) # Polling interval
             

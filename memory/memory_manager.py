@@ -16,10 +16,18 @@ class MemoryManager:
     def __init__(self):
         os.makedirs(ZERO_G_STORAGE_PATH, exist_ok=True)
         
-        # Initialize ChromaDB client
+        # Initialize ChromaDB client with retry logic for concurrent process initialization
         db_path = os.path.join(os.path.dirname(__file__), "..", "chroma_db")
-        self.chroma_client = chromadb.PersistentClient(path=db_path)
-        
+        for attempt in range(5):
+            try:
+                self.chroma_client = chromadb.PersistentClient(path=db_path)
+                break
+            except Exception as e:
+                logger.warning(f"ChromaDB init failed, retrying ({attempt+1}/5): {e}")
+                time.sleep(1)
+        else:
+            self.chroma_client = chromadb.PersistentClient(path=db_path)
+            
         # Use OpenAI embeddings for the Retrieval Layer
         openai_ef = embedding_functions.OpenAIEmbeddingFunction(
             api_key=os.getenv("OPENAI_API_KEY"),
