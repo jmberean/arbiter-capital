@@ -2,10 +2,11 @@ import time
 import logging
 import json
 from core.network import MockAXLNode
-from core.models import Proposal, ConsensusStatus
+from core.models import Proposal, ConsensusStatus, ConsensusMessage
 from agents.patriarch import patriarch_app
 from execution.firewall import PolicyFirewall
 from memory.memory_manager import MemoryManager
+from execution.safe_treasury import SafeTreasury
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("PatriarchProcess")
@@ -16,10 +17,10 @@ def run_patriarch_daemon():
     axl_node = MockAXLNode(node_id="Patriarch_Node_B")
     firewall = PolicyFirewall()
     memory_manager = MemoryManager()
+    treasury = SafeTreasury()
     last_proposal_id = 0
     
     # Track negotiation history for audit trail
-    # root_proposal_id -> [list of evaluations/rejections]
     negotiation_transcripts = {}
     
     logger.info("Patriarch listening for new Proposals...")
@@ -33,7 +34,7 @@ def run_patriarch_daemon():
                 proposal_dict = msg["payload"]
                 proposal = Proposal(**proposal_dict)
                 
-                # Determine root ID for tracking iterations (e.g., prop_123_v2 -> prop_123)
+                # Determine root ID for tracking iterations
                 root_id = proposal.proposal_id.split("_v")[0]
                 
                 logger.info(f"Received Proposal {proposal.proposal_id} from {msg['sender']}. Evaluating...")
@@ -63,6 +64,25 @@ def run_patriarch_daemon():
                                 logger.info("🔥 FIREWALL PASSED. Proposal is ready for execution.")
                                 axl_node.publish(topic="FIREWALL_CLEARED", payload=reviewed_proposal.model_dump())
                                 
+                                # --- NEW: Cryptographic Signature for Consensus ---
+                                if reviewed_proposal.safe_tx_hash:
+                                    logger.info(f"Signing safe_tx_hash: {reviewed_proposal.safe_tx_hash}")
+                                    signature = treasury.sign_hash(reviewed_proposal.safe_tx_hash)
+                                    
+                                    consensus_msg = ConsensusMessage(
+                                        proposal_id=reviewed_proposal.proposal_id,
+                                        signer_id="Patriarch_Node_B",
+                                        signature=signature,
+                                        safe_tx_hash=reviewed_proposal.safe_tx_hash,
+                                        timestamp=time.time()
+                                    )
+                                    
+                                    logger.info(f"Broadcasting consensus signature for {reviewed_proposal.proposal_id}")
+                                    axl_node.publish(topic="CONSENSUS_SIGNATURES", payload=consensus_msg.model_dump())
+                                else:
+                                    logger.warning("Accepted proposal missing safe_tx_hash. Signature skipped.")
+                                # --------------------------------------------------
+
                                 # Construct full transcript for audit trail
                                 full_transcript = json.dumps(negotiation_transcripts.get(root_id, []), indent=2)
                                 

@@ -5,6 +5,8 @@ from core.network import MockAXLNode
 from core.models import Proposal, ConsensusStatus
 from agents.quant import quant_app
 import uuid
+from execution.safe_treasury import SafeTreasury
+from execution.uniswap_v4.router import UniswapV4Router
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("QuantProcess")
@@ -13,12 +15,13 @@ def run_quant_daemon():
     """Runs Process 1 (The Quant) as a continuous listener on the AXL network."""
     logger.info("Initializing Quant Process (Node A)...")
     axl_node = MockAXLNode(node_id="Quant_Node_A")
+    treasury = SafeTreasury()
+    router = UniswapV4Router()
+    
     last_market_id = 0
     last_feedback_id = 0
-    last_execution_id = 0
     
-    # Track proposal states for iteration
-    # proposal_id -> {market_data, iteration, messages}
+    # ... (rest of history setup)
     proposal_history = {}
     
     logger.info("Quant listening for Market Data, Patriarch Feedback, and Execution Status...")
@@ -40,6 +43,16 @@ def run_quant_daemon():
                     if not proposal.proposal_id or proposal.proposal_id == "uuid_placeholder":
                         proposal.proposal_id = f"prop_{uuid.uuid4().hex[:8]}"
                     
+                    # Generate safe_tx_hash for the Patriarch to sign
+                    try:
+                        calldata = router.generate_calldata(proposal)
+                        # v4 Router placeholder address
+                        target_address = "0x1234567890123456789012345678901234567890"
+                        proposal.safe_tx_hash = treasury.get_safe_tx_hash(to=target_address, data=calldata)
+                        logger.info(f"Generated Safe Tx Hash for {proposal.proposal_id}: {proposal.safe_tx_hash}")
+                    except Exception as e:
+                        logger.error(f"Failed to generate safe_tx_hash: {e}")
+
                     # Store state for potential iteration
                     proposal_history[proposal.proposal_id] = {
                         "market_data": market_data,
