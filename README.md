@@ -1,6 +1,6 @@
 # Arbiter Capital - Autonomous Family Office (v3.0)
 
-**Arbiter Capital** is an Autonomous Multi-Agent Treasury Manager designed to maximize yield across decentralized finance (DeFi). To solve the "black box" trust issue for institutional capital, the system splits AI cognition into two isolated personas: an aggressive "Yield Quant" and a conservative "Risk Patriarch." 
+**Arbiter Capital** is an Autonomous Multi-Agent Treasury Manager designed to maximize yield across decentralized finance (DeFi). The system splits AI cognition into two isolated personas: an aggressive "Yield Quant" and a conservative "Risk Patriarch." 
 
 These agents formulate structured proposals based on predictive models and debate them over a decentralized mesh network. Trades are only executed via a treasury Safe when cryptographically verifiable consensus is reached.
 
@@ -10,36 +10,39 @@ The system operates via three distinct processes to ensure decentralization and 
 
 1.  **Process 1: The Quant (Agent 1 Runtime)**
     *   **Objective:** Identify yield opportunities using math-first cognition.
-    *   **Stack:** LangGraph + Python Quantitative Scripts + OpenAI (gpt-5.4-nano).
+    *   **Stack:** LangGraph + Python Quantitative Scripts + OpenAI GPT-4o.
 2.  **Process 2: The Patriarch (Agent 2 Runtime)**
     *   **Objective:** Capital preservation and strict adherence to drawdown limits.
-    *   **Stack:** LangGraph + OpenAI (gpt-5.4-nano).
+    *   **Stack:** LangGraph + OpenAI GPT-4o.
 3.  **Process 3: The Execution Node & Policy Firewall**
-    *   **Objective:** Enforces deterministic safety rules and routes authorized payloads to the Safe (Smart Account).
-    *   **Stack:** Deterministic Python runtime (Safe-ETH-Py + Web3.py).
+    *   **Objective:** Enforces deterministic safety rules and verifies multisig signatures before routing to the Safe.
+    *   **Stack:** Deterministic Python runtime (Web3.py).
 
-## Getting Started (Local Decentralized Simulation)
+## Key Features (MVP 6)
 
-The current MVP 4 implements a full 3-process topology with autonomous negotiation loops, smart account execution, and Uniswap v4 Hook-aware routing.
+*   **Cryptographic Consensus:** Agents broadcast EIP-712 Safe signatures over the AXL network.
+*   **Multisig Verification:** Execution node collects signatures and only dispatches when the threshold is met.
+*   **Dual-Layer Memory:** Decisions are logged permanently on **0G Layer 1** and indexed in **ChromaDB**.
+*   **Auditability:** Standard tool included to verify decision integrity against the blockchain.
+*   **Real-time Monitoring:** CLI Dashboard for live visualization of the agent mesh.
 
-### Key Capabilities
-
-*   **Self-Correction Loop:** The Quant agent automatically iterates on proposals based on the Patriarch's risk feedback.
-*   **Uniswap v4 Routing:** Execution node handles dynamic calldata generation for v4 Hooks (e.g., Volatility Oracles).
-*   **Proof of Debate:** Immutable audit trails stored on 0G including the entire P2P negotiation transcript.
-
-### Prerequisites
+## Prerequisites
 
 *   Python 3.10+
+*   [uv](https://github.com/astral-sh/uv) (Highly recommended for high-performance environment management)
 *   OpenAI API Key
 
-### Setup
+## Setup
 
 1.  Create a virtual environment and install dependencies:
     ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
+    uv venv
+    # Windows
+    .venv\Scripts\activate
+    # Unix/macOS
+    source .venv/bin/activate
+
+    uv pip install -r requirements.txt
     ```
 
 2.  Copy the example environment file and add your API key:
@@ -48,34 +51,45 @@ The current MVP 4 implements a full 3-process topology with autonomous negotiati
     ```
     *Edit `.env` and set your `OPENAI_API_KEY`.*
 
-### Running the End-to-End Simulation
+## Running the System
 
-To simulate the decentralized network, you must run the isolated processes in separate terminal windows.
+To simulate the decentralized network, run the isolated processes in separate terminal windows.
 
-**Terminal 1: Start the Quant Agent (Process 1)**
+**Terminal 1: Start the Network Monitor (The "God View")**
+```bash
+python monitor_network.py
+```
+
+**Terminal 2: Start the Quant Agent**
 ```bash
 python quant_process.py
 ```
 
-**Terminal 2: Start the Risk Patriarch (Process 2)**
+**Terminal 3: Start the Risk Patriarch**
 ```bash
 python patriarch_process.py
 ```
 
-**Terminal 3: Start the Execution Node (Process 3)**
+**Terminal 4: Start the Execution Node**
 ```bash
 python execution_process.py
 ```
 
-**Terminal 4: Inject Market Data (Demo Trigger)**
+**Terminal 5: Inject Market Data (Trigger Scenario)**
 ```bash
-python market_injector.py <scenario>
+python market_injector.py flash_crash_eth
 ```
 
-Available Scenarios:
-*   `flash_crash_eth`: Triggers rotation to stablecoin.
-*   `protocol_hack`: Simulates a security exploit; triggers **Emergency Withdrawal**.
-*   `gas_war`: Spikes gas to $500; tests if agents correctly skip low-profit trades.
-*   `pendle_yield_arbitrage`: Massive yield on Pendle; triggers **Yield Trade** action.
-*   `lst_expansion`: stETH yield surges; triggers **Stake LST** rotation.
-*   `cross_chain_alpha`: Triggers **Bridge** action to capture high yields on other chains.
+### Verification & Audit
+
+After a trade is executed, you can verify the decision integrity on the 0G Layer 1:
+```bash
+python verify_audit.py
+```
+
+## Demo Scenarios
+
+*   `flash_crash_eth`: Volatility spike triggers rotation to USDC via v4 Oracle Hook.
+*   `protocol_hack`: Safety score crash triggers **Emergency Withdrawal**.
+*   `gas_war`: Spikes gas to 850 Gwei; agents skip low-profit trades.
+*   `pendle_yield_arbitrage`: Massive yield detected; triggers negotiation and execution.

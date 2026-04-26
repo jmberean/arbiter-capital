@@ -26,14 +26,29 @@ Here is the finalized v3.0 architecture. This version patches the technical vuln
 To prove decentralization, the system abandons the single global LangGraph orchestrator. It operates via three distinct processes.
 
 ### Process 1: The Quant (Agent 1 Runtime)
-* **Objective:** Identify yield opportunities (e.g., rotating ETH into higher-yield SOL staking derivatives or Uniswap liquidity pools).
-* **Stack:** Dedicated LangGraph instance + Quantitative Python Scripts + LLM (Claude 3.5 Sonnet).
+* **Objective:** Identify yield opportunities (e.g., rotating ETH into higher-yield stETH or Pendle PT pools).
+* **Stack:** Dedicated LangGraph instance + Quantitative Python Scripts + OpenAI (GPT-4o / gpt-5.4-nano).
 * **Network:** Runs locally, bound to AXL Node A.
 
 ### Process 2: The Patriarch (Agent 2 Runtime)
 * **Objective:** Capital preservation, strict adherence to drawdown limits, and portfolio stability.
-* **Stack:** Dedicated LangGraph instance + LLM (Claude 3.5 Sonnet).
+* **Stack:** Dedicated LangGraph instance + OpenAI (GPT-4o / gpt-5.4-nano).
 * **Network:** Runs locally, bound to AXL Node B.
+
+---
+
+## 4. Cryptographic Consensus & Multisig
+To ensure institutional security, the system utilizes a 2-of-2 (or configurable threshold) cryptographic approval mechanism.
+1.  **Hash Generation:** The Quant agent generates an EIP-712 transaction hash for every proposal.
+2.  **Signing:** Upon accepting a proposal, the Patriarch signs the `safe_tx_hash` with its private key.
+3.  **AXL Propagation:** The signature is broadcast over the decentralized AXL network via the `CONSENSUS_SIGNATURES` topic.
+4.  **Threshold Verification:** The Execution Node collects signatures and only dispatches to the Safe treasury once the cryptographic threshold is verified.
+
+---
+
+## 5. Audit & Monitoring Tools
+*   **Audit Verifier (`verify_audit.py`):** A standalone utility to cross-reference local semantic memory (ChromaDB) with the immutable receipts written to the 0G Layer 1.
+*   **Network Monitor (`monitor_network.py`):** A real-time CLI dashboard that visualizes every message, signature, and execution event passing through the decentralized mesh network.
 
 ### Process 3: The Execution Node & Policy Firewall
 * **Objective:** Enforces deterministic safety rules and routes approved payloads to KeeperHub.
@@ -41,15 +56,15 @@ To prove decentralization, the system abandons the single global LangGraph orche
 
 ---
 
-## 4. The Quant's Brain (Math-First Cognition)
+## 6. The Quant's Brain (Math-First Cognition)
 To prevent LLM hallucination in financial decision-making, the Quant agent does not guess market movements. It utilizes a LangGraph tool-calling architecture to execute actual mathematical forecasting.
 1.  **Quantitative Ingestion:** The LangGraph node executes a Python tool that runs custom, state-of-the-art price prediction models against live or simulated market data.
 2.  **LLM Translation:** The quantitative output (e.g., "Predicted 48-hour ETH volatility exceeds 12%; SOL staking yield spread +2.1%") is injected into the LLM's context.
-3.  **Proposal Generation:** Claude 3.5 Sonnet translates the math into a structured negotiation payload to present to the Patriarch over the AXL network.
+3.  **Proposal Generation:** OpenAI GPT-4o translates the math into a structured negotiation payload to present to the Patriarch over the AXL network.
 
 ---
 
-## 5. The Structured Negotiation Protocol
+## 7. The Structured Negotiation Protocol
 Freeform LLM chat is unparseable for smart contracts. Agents debate using a strict JSON schema passed over the AXL network.
 
 **The `Proposal` Schema:**
