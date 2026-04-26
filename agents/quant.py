@@ -55,6 +55,7 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
     market_data: dict
     quant_analysis: dict
+    historical_context: list
     current_proposal: Optional[Proposal]
     iteration: int
 
@@ -70,6 +71,19 @@ def quantitative_ingestion(state: AgentState):
         "quant_analysis": analysis,
         "iteration": state.get("iteration", 0) + 1
     }
+
+from memory.memory_manager import MemoryManager
+
+def recall_memory(state: AgentState):
+    """Queries ChromaDB/0G for historical decisions related to the current analysis."""
+    analysis = state["quant_analysis"]
+    if analysis["suggested_action"] == "NONE":
+        return {"historical_context": []}
+        
+    mm = MemoryManager()
+    query = f"Action: {analysis['suggested_action']}"
+    history = mm.query_historical_decisions(query, n_results=2)
+    return {"historical_context": history}
 
 def generate_proposal(state: AgentState):
     """Uses LLM to translate math analysis into a structured JSON Proposal."""
@@ -90,10 +104,14 @@ def generate_proposal(state: AgentState):
     Quantitative Analysis:
     {json.dumps(analysis, indent=2)}
     
+    Historical Context (Past decisions verified on 0G):
+    {json.dumps(state.get('historical_context', []), indent=2)}
+    
     Rules:
     - Target protocol MUST be Uniswap_V4.
     - If rotating to USDC, suggest a Volatility_Oracle hook.
     - Base all numbers on the provided analysis. Do not invent yields or risk scores.
+    - Use historical context to inform your rationale.
     """
     
     # If there are previous messages (e.g., feedback from Patriarch), include them
@@ -110,10 +128,12 @@ def generate_proposal(state: AgentState):
 # --- Graph Definition ---
 workflow = StateGraph(AgentState)
 workflow.add_node("ingest_data", quantitative_ingestion)
+workflow.add_node("recall_memory", recall_memory)
 workflow.add_node("draft_proposal", generate_proposal)
 
 workflow.set_entry_point("ingest_data")
-workflow.add_edge("ingest_data", "draft_proposal")
+workflow.add_edge("ingest_data", "recall_memory")
+workflow.add_edge("recall_memory", "draft_proposal")
 workflow.add_edge("draft_proposal", END)
 
 quant_app = workflow.compile()
