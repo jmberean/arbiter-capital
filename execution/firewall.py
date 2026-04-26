@@ -6,7 +6,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("PolicyFirewall")
 
 # Hardcoded Constraints
-WHITELISTED_ASSETS = ["WETH", "USDC", "SOL"]
+WHITELISTED_ASSETS = ["WETH", "USDC", "SOL", "WBTC", "stETH", "PT-USDC"]
+
 MAX_TRANSACTION_VALUE_USD = 50000.0
 REQUIRED_ARCHITECTURE = "Uniswap_V4"
 
@@ -15,7 +16,10 @@ class PolicyFirewall:
         self.mock_prices = {
             "WETH": 3500.0,
             "USDC": 1.0,
-            "SOL": 150.0
+            "SOL": 150.0,
+            "WBTC": 65000.0,
+            "stETH": 3510.0,
+            "PT-USDC": 0.92
         }
 
     def _get_usd_value(self, asset: str, amount: float) -> float:

@@ -101,3 +101,30 @@ This document provides a highly technical, step-by-step roadmap for implementing
 *   **Uniswap v4 Hook Support:** Integrated `Volatility_Oracle` and `Dynamic_Fee` routing in `router.py`.
 *   **Expanded Audit Trail:** Updated `patriarch_process.py` to store complete negotiation transcripts on 0G.
 *   **End-to-End Negotiation Test:** Verified 3-round debate reaching consensus and execution.
+
+---
+
+## MVP 5: Live Infrastructure & Testnet Pilot (IN PROGRESS)
+**Objective:** Transition from local simulation to actual on-chain execution on decentralized testnets.
+
+### Step 1: Live Memory (0G L1 Integration)
+*   Replace mock `_write_to_0g` logic with real RPC calls to the 0G Layer 1 Testnet.
+*   Submit every Decision Receipt as an on-chain transaction to ensure permanent auditability.
+*   Verify 0G block hashes via a block explorer.
+
+### Step 2: Testnet Safe Deployment
+*   Deploy a real **Safe (Smart Account)** on Sepolia or Base Sepolia.
+*   Configure the Safe with the required multisig threshold (e.g., 2-of-2 for the agents).
+*   Fund the Safe with Testnet assets for live trading.
+
+### Step 3: KeeperHub MCP Configuration
+*   Connect the **Process 3 Execution Node** to a real KeeperHub MCP server.
+*   Authorize KeeperHub as a module on the Safe to allow deterministic, agent-driven execution without manual human signing.
+
+### Step 4: Live P2P Networking (AXL)
+*   Migrate from the SQLite `MockAXLNode` to actual **Gensyn AXL** decentralized nodes.
+*   Ensure low-latency message passing between isolated agent runtimes across physical machines.
+
+### Step 5: Uniswap v4 Live Routing
+*   Transition from mock calldata to real **Uniswap v4 Router** interactions.
+*   Execute a live "Consensus -> Execution" trade on the Uniswap v4 Testnet.
