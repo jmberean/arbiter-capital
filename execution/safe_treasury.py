@@ -27,33 +27,44 @@ class SafeTreasury:
     def execute_proposal(self, proposal: Proposal, calldata: bytes):
         """
         Executes a proposal via the Safe Smart Account.
+        In live mode, it builds and signs a Safe multisig transaction.
         """
         if self.mock_mode:
             logger.info(f"MOCK EXECUTION: Executing Proposal {proposal.proposal_id} via Safe.")
             logger.info(f"Target: {proposal.target_protocol}, Action: {proposal.action}, Value: {proposal.amount_in} {proposal.asset_in}")
-            return "mock_tx_hash_0x123456789"
+            return f"mock_tx_{os.urandom(4).hex()}"
 
         try:
-            # For MVP 3, we simulate the multisig by using a single authorized executor.
-            # In production, this would involve collecting signatures over the network.
+            logger.info(f"INITIATING LIVE SAFE EXECUTION: {proposal.proposal_id}")
             
-            # Simple direct execution if the executor has enough permissions on the Safe
-            # This is a simplified version for the hackathon MVP.
+            # Target contract is usually the Uniswap v4 Universal Router or similar
+            # For the MVP, we assume the router address is provided or hardcoded
+            target_address = "0x1234567890123456789012345678901234567890" # Placeholder for v4 Router
             
-            logger.info(f"INITIATING SAFE EXECUTION: {proposal.proposal_id}")
+            # 1. Build the Safe transaction
+            safe_tx = self.safe.build_multisig_tx(
+                to=target_address,
+                value=0,
+                data=calldata,
+            )
             
-            # Example: Creating a Safe transaction
-            # tx = self.safe.build_multisig_tx(
-            #     to=proposal.target_contract_address or "0x...", # Target contract (e.g. Uniswap v4 Router)
-            #     value=0,
-            #     data=calldata,
-            # )
+            # 2. Sign the transaction with the executor's private key
+            safe_tx.sign(self.private_key)
             
-            # For the MVP, we log the intent to sign and route.
-            # Real execution would require testnet gas and valid calldata.
+            # 3. For a 1-of-N or if we have enough signatures, we can execute
+            # In a real 2-of-2, we would need to collect the other signature via AXL.
+            # For this pilot, we assume the executor is sufficient or we are in a 1-of-1 test setup.
             
+            logger.info(f"Safe Transaction built and signed for {proposal.proposal_id}")
+            
+            # tx_hash = safe_tx.execute(self.private_key)
+            # logger.info(f"Safe Transaction Dispatched. Hash: {tx_hash}")
+            
+            # Since we don't want to actually spend gas unless the user is ready, 
+            # we will return a simulated hash but with the real logic above ready to uncomment.
             tx_hash = "0x" + os.urandom(32).hex()
-            logger.info(f"Safe Transaction Dispatched. Hash: {tx_hash}")
+            logger.info(f"LIVE MODE: (Simulation) Safe Transaction would be dispatched here. Hash: {tx_hash}")
+            
             return tx_hash
 
         except Exception as e:

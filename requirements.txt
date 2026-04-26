@@ -131,12 +131,12 @@ typing_extensions==4.15.0
 urllib3==2.6.3
 uuid_utils==0.14.1
 uvicorn==0.39.0
-uvloop==0.22.1
 watchfiles==1.1.1
 web3==7.15.0
 websocket-client==1.9.0
 websockets==15.0.1
 xxhash==3.7.0
 yarl==1.22.0
+mcp==0.1.0
 zipp==3.23.1
 zstandard==0.25.0

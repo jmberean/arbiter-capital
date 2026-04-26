@@ -7,13 +7,14 @@ logger = logging.getLogger("PolicyFirewall")
 
 # Hardcoded Constraints
 WHITELISTED_ASSETS = ["WETH", "USDC", "SOL", "WBTC", "stETH", "PT-USDC"]
-
 MAX_TRANSACTION_VALUE_USD = 50000.0
 REQUIRED_ARCHITECTURE = "Uniswap_V4"
 
-class PolicyFirewall:
+class MarketOracle:
+    """Simple Oracle for the firewall to verify transaction values."""
     def __init__(self):
-        self.mock_prices = {
+        # In a real system, this would fetch from a Chainlink feed or Exchange API
+        self.prices = {
             "WETH": 3500.0,
             "USDC": 1.0,
             "SOL": 150.0,
@@ -22,11 +23,17 @@ class PolicyFirewall:
             "PT-USDC": 0.92
         }
 
+    def get_price(self, asset: str) -> float:
+        return self.prices.get(asset, 0.0)
+
+class PolicyFirewall:
+    def __init__(self):
+        self.oracle = MarketOracle()
+
     def _get_usd_value(self, asset: str, amount: float) -> float:
-        """Calculate approximate USD value of an asset based on mock prices."""
-        price = self.mock_prices.get(asset)
-        if not price:
-            # If we don't know the price, assume it's too risky/high to pass the firewall
+        """Calculate approximate USD value of an asset."""
+        price = self.oracle.get_price(asset)
+        if price == 0.0:
             return float('inf') 
         return price * amount
 

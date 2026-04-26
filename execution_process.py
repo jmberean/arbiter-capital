@@ -7,6 +7,7 @@ from core.network import MockAXLNode
 from core.models import Proposal
 from execution.safe_treasury import SafeTreasury
 from execution.uniswap_v4.router import UniswapV4Router
+from execution.keeper_hub import execute_with_keeperhub
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ExecutionProcess")
@@ -38,17 +39,25 @@ def run_execution_daemon():
                 # 2. Generate Uniswap v4 Calldata
                 calldata = router.generate_calldata(proposal)
                 
-                # 3. Execute via Safe Smart Account
-                tx_hash = treasury.execute_proposal(proposal, calldata)
+                # 3. Execute via KeeperHub (Preferred) or direct SafeTreasury
+                if os.getenv("KEEPERHUB_SERVER_PATH"):
+                    logger.info("Attempting execution via KeeperHub MCP...")
+                    tx_hash = execute_with_keeperhub(proposal, calldata)
+                else:
+                    logger.info("KeeperHub not configured. Falling back to direct SafeTreasury execution...")
+                    tx_hash = treasury.execute_proposal(proposal, calldata)
                 
-                logger.info(f"✅ EXECUTION COMPLETE for {proposal.proposal_id}. Tx Hash: {tx_hash}")
-                
-                # 4. Notify the network of successful execution
-                axl_node.publish(topic="EXECUTION_SUCCESS", payload={
-                    "proposal_id": proposal.proposal_id,
-                    "tx_hash": tx_hash,
-                    "timestamp": time.time()
-                })
+                if tx_hash:
+                    logger.info(f"✅ EXECUTION COMPLETE for {proposal.proposal_id}. Tx Hash: {tx_hash}")
+                    
+                    # 4. Notify the network of successful execution
+                    axl_node.publish(topic="EXECUTION_SUCCESS", payload={
+                        "proposal_id": proposal.proposal_id,
+                        "tx_hash": tx_hash,
+                        "timestamp": time.time()
+                    })
+                else:
+                    logger.error(f"❌ EXECUTION FAILED for {proposal.proposal_id}")
                 
             time.sleep(2)
             
