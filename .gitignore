@@ -10,3 +10,4 @@ GEMINI.md
 chroma_db/
 axl_network.db
 .vscode/
+test_*/
