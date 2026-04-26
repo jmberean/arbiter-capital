@@ -90,3 +90,14 @@ This document provides a highly technical, step-by-step roadmap for implementing
 *   Run the complete 3-process topology on the AXL network.
 *   Trigger `market_god.py` to initiate a crisis.
 *   Observe Quant formulation -> AXL transmission -> Patriarch debate -> Consensus -> Firewall validation -> 0G auditing -> KeeperHub EVM execution on Uniswap v4.
+
+---
+
+## MVP 4: Loop Closure & Advanced DeFi Routing (COMPLETED)
+**Objective:** Harden decision-making with self-correction loops, expand audit trails, and implement v4 Hook routing.
+
+### Key Deliverables
+*   **Quant Feedback Loop:** Implemented iterative proposal generation in `agents/quant.py`.
+*   **Uniswap v4 Hook Support:** Integrated `Volatility_Oracle` and `Dynamic_Fee` routing in `router.py`.
+*   **Expanded Audit Trail:** Updated `patriarch_process.py` to store complete negotiation transcripts on 0G.
+*   **End-to-End Negotiation Test:** Verified 3-round debate reaching consensus and execution.

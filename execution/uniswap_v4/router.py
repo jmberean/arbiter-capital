@@ -34,6 +34,18 @@ class UniswapV4Router:
         elif proposal.action == ActionType.PROVIDE_LIQUIDITY:
             logger.info(f"Generating Uniswap v4 LIQUIDITY calldata for {proposal.asset_in}")
             return b"\x56\x78" + proposal.proposal_id.encode()
+
+        elif proposal.action == ActionType.STAKE_LST:
+            logger.info(f"Generating LST STAKING calldata (Lido/RocketPool) for {proposal.asset_in}")
+            return b"\xAA\xBB" + proposal.proposal_id.encode()
+
+        elif proposal.action == ActionType.YIELD_TRADE:
+            logger.info(f"Generating PENDLE YIELD TRADE calldata for {proposal.asset_in}")
+            return b"\xCC\xDD" + proposal.proposal_id.encode()
+
+        elif proposal.action == ActionType.EMERGENCY_WITHDRAW:
+            logger.info(f"Generating EMERGENCY WITHDRAWAL calldata for {proposal.asset_in}")
+            return b"\xFF\x00" + proposal.proposal_id.encode()
             
         else:
             logger.warning(f"Unsupported action type for calldata generation: {proposal.action}")

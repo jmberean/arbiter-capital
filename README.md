@@ -20,7 +20,13 @@ The system operates via three distinct processes to ensure decentralization and 
 
 ## Getting Started (Local Decentralized Simulation)
 
-The current MVP 3 implements a full 3-process topology with smart account execution simulation and Uniswap v4 routing logic.
+The current MVP 4 implements a full 3-process topology with autonomous negotiation loops, smart account execution, and Uniswap v4 Hook-aware routing.
+
+### Key Capabilities
+
+*   **Self-Correction Loop:** The Quant agent automatically iterates on proposals based on the Patriarch's risk feedback.
+*   **Uniswap v4 Routing:** Execution node handles dynamic calldata generation for v4 Hooks (e.g., Volatility Oracles).
+*   **Proof of Debate:** Immutable audit trails stored on 0G including the entire P2P negotiation transcript.
 
 ### Prerequisites
 
@@ -63,7 +69,13 @@ python execution_process.py
 
 **Terminal 4: Inject Market Data (Demo Trigger)**
 ```bash
-python market_injector.py flash_crash_eth
+python market_injector.py <scenario>
 ```
 
-This will instantly trigger the `flash_crash_eth` scenario. The Quant will detect the crash, formulate a high-conviction rotation strategy, and publish it to the local AXL broker. The Patriarch will automatically receive the proposal, evaluate it, and (if accepted) pass it to the Policy Firewall. Upon clearing the firewall, the Execution Node will generate Uniswap v4 calldata and route it through the Safe Smart Account.
+Available Scenarios:
+*   `flash_crash_eth`: Triggers rotation to stablecoin.
+*   `protocol_hack`: Simulates a security exploit; triggers **Emergency Withdrawal**.
+*   `gas_war`: Spikes gas to $500; tests if agents correctly skip low-profit trades.
+*   `pendle_yield_arbitrage`: Massive yield on Pendle; triggers **Yield Trade** action.
+*   `lst_expansion`: stETH yield surges; triggers **Stake LST** rotation.
+*   `cross_chain_alpha`: Triggers **Bridge** action to capture high yields on other chains.

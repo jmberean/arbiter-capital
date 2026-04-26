@@ -6,6 +6,10 @@ class ActionType(str, Enum):
     SWAP = "SWAP"
     STAKE = "STAKE"
     PROVIDE_LIQUIDITY = "PROVIDE_LIQUIDITY"
+    EMERGENCY_WITHDRAW = "EMERGENCY_WITHDRAW"
+    BRIDGE = "BRIDGE"
+    STAKE_LST = "STAKE_LST" # e.g. ETH -> stETH
+    YIELD_TRADE = "YIELD_TRADE" # e.g. Pendle PT/YT trading
 
 class ConsensusStatus(str, Enum):
     PENDING = "PENDING"

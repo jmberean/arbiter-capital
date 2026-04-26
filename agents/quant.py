@@ -20,34 +20,64 @@ logger = logging.getLogger("QuantAgent")
 # --- Math-First Tooling ---
 def calculate_optimal_rotation(market_data: dict) -> dict:
     """
-    Deterministic Python tool that performs actual math on market data,
-    rather than letting the LLM guess numbers.
+    Deterministic Python tool that performs actual math on market data.
+    Identifies LST Staking and Pendle Yield Trading opportunities.
     """
     logger.info("Executing mathematical forecasting...")
     assets = market_data["assets"]
+    network = market_data.get("network", {"gas_price_gwei": 25.0})
     
-    # Simple strategy: If ETH volatility is high, rotate to USDC or higher yield SOL
     eth_vol = assets["WETH"]["volatility_48h"]
-    sol_yield = assets["SOL"]["staking_yield"]
+    steth_yield = assets.get("stETH", {}).get("staking_yield", 0.0)
+    pendle_yield = assets.get("PENDLE_PT_USDC", {}).get("implied_yield", 0.0)
+    sol_safety = assets["SOL"].get("safety_score", 10.0)
+    
+    # Estimate transaction cost in USD
+    gas_cost_usd = ((network["gas_price_gwei"] * 1e-9) * 150000) * assets["WETH"]["price"]
     
     recommendation = {
-        "analysis": f"ETH 48h Volatility is {eth_vol*100}%. SOL Yield is {sol_yield*100}%.",
+        "analysis": f"Gas Cost: ${round(gas_cost_usd, 2)}, Pendle Yield: {pendle_yield*100}%, LST Yield: {steth_yield*100}%",
         "suggested_action": "NONE",
         "target_protocol": "Uniswap_V4"
     }
 
-    if eth_vol > 0.15: # High volatility
-        recommendation["suggested_action"] = "SWAP_WETH_TO_USDC"
-        recommendation["rationale"] = "High volatility detected. Rotate to stablecoin to preserve capital."
-        recommendation["projected_apy"] = assets["USDC"]["staking_yield"] * 100
+    # 1. Emergency Case: Protocol Hack
+    if sol_safety < 4.0:
+        recommendation["suggested_action"] = "EMERGENCY_WITHDRAW"
+        recommendation["rationale"] = f"CRITICAL: Protocol safety score cratered. Emergency exit required."
+        recommendation["risk_score"] = 9.5
+        return recommendation
+
+    # 2. Pendle Yield Arbitrage (Highest Priority)
+    if pendle_yield > 0.15:
+        # Profitability check for 10k trade
+        if (10000 * (pendle_yield - 0.04) / 52) > gas_cost_usd:
+            recommendation["suggested_action"] = "YIELD_TRADE"
+            recommendation["target_protocol"] = "Pendle"
+            recommendation["rationale"] = f"Massive yield spread on Pendle PT-USDC ({pendle_yield*100}%). Executing yield arbitrage."
+            recommendation["projected_apy"] = pendle_yield * 100
+            recommendation["risk_score"] = 5.5
+            return recommendation
+
+    # 3. LST Expansion (Low Risk)
+    if steth_yield > (assets["WETH"]["staking_yield"] + 0.02):
+        recommendation["suggested_action"] = "STAKE_LST"
+        recommendation["target_protocol"] = "Lido"
+        recommendation["rationale"] = f"LST yield spread > 2%. Rotating WETH into stETH for passive yield optimization."
+        recommendation["projected_apy"] = steth_yield * 100
+        recommendation["risk_score"] = 3.0
+        return recommendation
+        
+    # 4. Standard Volatility Rotation
+    if eth_vol > 0.15:
+        recommendation["suggested_action"] = "SWAP"
+        recommendation["asset_out"] = "USDC"
+        recommendation["rationale"] = "High volatility on ETH. Rotate to stablecoin."
+        recommendation["projected_apy"] = 4.0
         recommendation["risk_score"] = 2.0
-    elif sol_yield > 0.08: # High yield opportunity
-        recommendation["suggested_action"] = "SWAP_WETH_TO_SOL"
-        recommendation["rationale"] = "Significant yield spread detected on SOL. Reallocate capital for yield maximization."
-        recommendation["projected_apy"] = sol_yield * 100
-        recommendation["risk_score"] = 6.5
+        
     else:
-         recommendation["rationale"] = "Market conditions stable. No immediate action required."
+         recommendation["rationale"] = "Market stable. No high-conviction trades identified."
 
     return recommendation
 
