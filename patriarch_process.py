@@ -5,6 +5,7 @@ from core.network import MockAXLNode
 from core.models import Proposal, ConsensusStatus
 from agents.patriarch import patriarch_app
 from execution.firewall import PolicyFirewall
+from memory.memory_manager import MemoryManager
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("PatriarchProcess")
@@ -14,6 +15,7 @@ def run_patriarch_daemon():
     logger.info("Initializing Patriarch Process (Node B)...")
     axl_node = MockAXLNode(node_id="Patriarch_Node_B")
     firewall = PolicyFirewall()
+    memory_manager = MemoryManager()
     last_proposal_id = 0
     
     logger.info("Patriarch listening for new Proposals...")
@@ -44,6 +46,13 @@ def run_patriarch_daemon():
                             if firewall.validate_proposal(reviewed_proposal):
                                 logger.info("🔥 FIREWALL PASSED. Proposal is ready for execution.")
                                 axl_node.publish(topic="FIREWALL_CLEARED", payload=reviewed_proposal.model_dump())
+                                
+                                # Save the immutable receipt to 0G & index in ChromaDB
+                                memory_manager.save_decision(
+                                    proposal=reviewed_proposal.model_dump(),
+                                    transcript=f"Quant Proposed, Patriarch Evaluated: {reviewed_proposal.rationale}"
+                                )
+                                
                         except ValueError as e:
                             logger.error(f"❌ FIREWALL REJECTED: {e}")
                             
