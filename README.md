@@ -10,10 +10,10 @@ The system operates via three distinct processes to ensure decentralization and 
 
 1.  **Process 1: The Quant (Agent 1 Runtime)**
     *   **Objective:** Identify yield opportunities using math-first cognition.
-    *   **Stack:** LangGraph + Python Quantitative Scripts + GPT-5.5.
+    *   **Stack:** LangGraph + Python Quantitative Scripts + GPT-5.4 nano.
 2.  **Process 2: The Patriarch (Agent 2 Runtime)**
     *   **Objective:** Capital preservation and strict adherence to drawdown limits.
-    *   **Stack:** LangGraph + GPT-5.5.
+    *   **Stack:** LangGraph + GPT-5.4 nano.
 3.  **Process 3: The Execution Node & Policy Firewall**
     *   **Objective:** Enforces deterministic safety rules and routes payloads to execution.
     *   **Stack:** Deterministic Python runtime (No LLMs).

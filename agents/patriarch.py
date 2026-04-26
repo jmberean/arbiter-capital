@@ -30,7 +30,7 @@ def evaluate_proposal(state: AgentState):
 
     logger.info(f"Evaluating Proposal ID: {proposal.proposal_id}")
 
-    llm = ChatOpenAI(model="gpt-5.5", temperature=0.1)
+    llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0.1)
     
     system_prompt = """
     You are the Risk Patriarch agent for Arbiter Capital.

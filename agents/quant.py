@@ -79,7 +79,7 @@ def generate_proposal(state: AgentState):
         logger.info("No actionable trade identified by math models.")
         return {"current_proposal": None}
 
-    llm = ChatOpenAI(model="gpt-5.5", temperature=0.2)
+    llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0.2)
     # We instruct the LLM to strictly output the JSON structure matching our Pydantic model
     structured_llm = llm.with_structured_output(Proposal)
     
