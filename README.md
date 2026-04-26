@@ -10,17 +10,17 @@ The system operates via three distinct processes to ensure decentralization and 
 
 1.  **Process 1: The Quant (Agent 1 Runtime)**
     *   **Objective:** Identify yield opportunities using math-first cognition.
-    *   **Stack:** LangGraph + Python Quantitative Scripts + GPT-5.4 nano.
+    *   **Stack:** LangGraph + Python Quantitative Scripts + OpenAI (gpt-5.4-nano).
 2.  **Process 2: The Patriarch (Agent 2 Runtime)**
     *   **Objective:** Capital preservation and strict adherence to drawdown limits.
-    *   **Stack:** LangGraph + GPT-5.4 nano.
+    *   **Stack:** LangGraph + OpenAI (gpt-5.4-nano).
 3.  **Process 3: The Execution Node & Policy Firewall**
-    *   **Objective:** Enforces deterministic safety rules and routes payloads to execution.
-    *   **Stack:** Deterministic Python runtime (No LLMs).
+    *   **Objective:** Enforces deterministic safety rules and routes authorized payloads to the Safe (Smart Account).
+    *   **Stack:** Deterministic Python runtime (Safe-ETH-Py + Web3.py).
 
 ## Getting Started (Local Decentralized Simulation)
 
-The current MVP 2 implements a multi-process simulation of the decentralized network using a local message broker, along with a dual-layer memory system (0G mock + ChromaDB).
+The current MVP 3 implements a full 3-process topology with smart account execution simulation and Uniswap v4 routing logic.
 
 ### Prerequisites
 
@@ -48,20 +48,22 @@ To simulate the decentralized network, you must run the isolated processes in se
 
 **Terminal 1: Start the Quant Agent (Process 1)**
 ```bash
-source venv/bin/activate
 python quant_process.py
 ```
 
 **Terminal 2: Start the Risk Patriarch (Process 2)**
 ```bash
-source venv/bin/activate
 python patriarch_process.py
 ```
 
-**Terminal 3: Inject Market Data (Demo Trigger)**
+**Terminal 3: Start the Execution Node (Process 3)**
 ```bash
-source venv/bin/activate
+python execution_process.py
+```
+
+**Terminal 4: Inject Market Data (Demo Trigger)**
+```bash
 python market_injector.py flash_crash_eth
 ```
 
-This will instantly trigger the `flash_crash_eth` scenario. The Quant will detect the crash, formulate a high-conviction rotation strategy, publish it to the local AXL broker, and query ChromaDB/0G for historical context. The Patriarch will automatically receive the proposal from the network, evaluate it against the policy firewall, and write the immutable decision receipt to the dual-layer memory.
+This will instantly trigger the `flash_crash_eth` scenario. The Quant will detect the crash, formulate a high-conviction rotation strategy, and publish it to the local AXL broker. The Patriarch will automatically receive the proposal, evaluate it, and (if accepted) pass it to the Policy Firewall. Upon clearing the firewall, the Execution Node will generate Uniswap v4 calldata and route it through the Safe Smart Account.
