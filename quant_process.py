@@ -101,6 +101,16 @@ def run_quant_daemon():
                                     "messages": result.get("messages", [])
                                 }
                                 
+                                # --- Generate safe_tx_hash for the revised proposal ---
+                                try:
+                                    calldata = router.generate_calldata(new_proposal)
+                                    target_address = "0x1234567890123456789012345678901234567890"
+                                    new_proposal.safe_tx_hash = treasury.get_safe_tx_hash(to=target_address, data=calldata)
+                                    logger.info(f"Generated Safe Tx Hash for REVISED {new_proposal.proposal_id}: {new_proposal.safe_tx_hash}")
+                                except Exception as e:
+                                    logger.error(f"Failed to generate safe_tx_hash for revision: {e}")
+                                # -----------------------------------------------------
+
                                 logger.info(f"Publishing REVISED Proposal {new_proposal.proposal_id} to AXL Network...")
                                 axl_node.publish(topic="PROPOSALS", payload=new_proposal.model_dump())
                             else:
