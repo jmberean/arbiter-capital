@@ -18,9 +18,9 @@ The system operates via three distinct processes to ensure decentralization and 
     *   **Objective:** Enforces deterministic safety rules and routes payloads to execution.
     *   **Stack:** Deterministic Python runtime (No LLMs).
 
-## Getting Started (Local Simulation)
+## Getting Started (Local Decentralized Simulation)
 
-The current MVP implements a local simulation of the multi-agent negotiation process.
+The current MVP 2 implements a multi-process simulation of the decentralized network using a local message broker, along with a dual-layer memory system (0G mock + ChromaDB).
 
 ### Prerequisites
 
@@ -44,10 +44,24 @@ The current MVP implements a local simulation of the multi-agent negotiation pro
 
 ### Running the End-to-End Simulation
 
-To run a simulation of the network, including market data injection, agent negotiation, and firewall validation:
+To simulate the decentralized network, you must run the isolated processes in separate terminal windows.
 
+**Terminal 1: Start the Quant Agent (Process 1)**
 ```bash
-python mock_network.py
+source venv/bin/activate
+python quant_process.py
 ```
 
-This will trigger the `flash_crash_eth` scenario, prompting the Quant to formulate a high-conviction rotation strategy, which the Patriarch will then evaluate.
+**Terminal 2: Start the Risk Patriarch (Process 2)**
+```bash
+source venv/bin/activate
+python patriarch_process.py
+```
+
+**Terminal 3: Inject Market Data (Demo Trigger)**
+```bash
+source venv/bin/activate
+python market_injector.py flash_crash_eth
+```
+
+This will instantly trigger the `flash_crash_eth` scenario. The Quant will detect the crash, formulate a high-conviction rotation strategy, publish it to the local AXL broker, and query ChromaDB/0G for historical context. The Patriarch will automatically receive the proposal from the network, evaluate it against the policy firewall, and write the immutable decision receipt to the dual-layer memory.
