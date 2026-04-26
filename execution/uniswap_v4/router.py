@@ -13,13 +13,23 @@ class UniswapV4Router:
     
     def generate_calldata(self, proposal: Proposal) -> bytes:
         """
-        Generates simulated EVM calldata for Uniswap v4 interactions.
+        Generates simulated EVM calldata for Uniswap v4 interactions,
+        including specific logic for targeting v4 Hooks.
         """
+        calldata_prefix = b"\x12\x34" # Default swap prefix
+        
+        if proposal.v4_hook_required:
+            logger.info(f"Targeting Uniswap v4 Hook pool: {proposal.v4_hook_required}")
+            if proposal.v4_hook_required == "Volatility_Oracle":
+                # Simulate routing through a pool with a volatility-adjusted fee hook
+                calldata_prefix = b"\x99\xAA" 
+            elif proposal.v4_hook_required == "Dynamic_Fee":
+                calldata_prefix = b"\xBB\xCC"
+
         if proposal.action == ActionType.SWAP:
-            # In a real implementation, we would use eth_abi to encode:
-            # swap(pool_key, swap_params, test_settings)
             logger.info(f"Generating Uniswap v4 SWAP calldata for {proposal.amount_in} {proposal.asset_in} -> {proposal.asset_out}")
-            return b"\x12\x34" + proposal.proposal_id.encode()
+            # Real implementation would encode the PoolKey and Hook address
+            return calldata_prefix + proposal.proposal_id.encode()
             
         elif proposal.action == ActionType.PROVIDE_LIQUIDITY:
             logger.info(f"Generating Uniswap v4 LIQUIDITY calldata for {proposal.asset_in}")

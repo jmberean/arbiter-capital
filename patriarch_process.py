@@ -18,6 +18,10 @@ def run_patriarch_daemon():
     memory_manager = MemoryManager()
     last_proposal_id = 0
     
+    # Track negotiation history for audit trail
+    # root_proposal_id -> [list of evaluations/rejections]
+    negotiation_transcripts = {}
+    
     logger.info("Patriarch listening for new Proposals...")
     
     while True:
@@ -29,6 +33,9 @@ def run_patriarch_daemon():
                 proposal_dict = msg["payload"]
                 proposal = Proposal(**proposal_dict)
                 
+                # Determine root ID for tracking iterations (e.g., prop_123_v2 -> prop_123)
+                root_id = proposal.proposal_id.split("_v")[0]
+                
                 logger.info(f"Received Proposal {proposal.proposal_id} from {msg['sender']}. Evaluating...")
                 
                 state = {"incoming_proposal": proposal, "messages": []}
@@ -39,6 +46,15 @@ def run_patriarch_daemon():
                     logger.info(f"Publishing Evaluation for {reviewed_proposal.proposal_id} (Status: {reviewed_proposal.consensus_status.value})")
                     axl_node.publish(topic="PROPOSAL_EVALUATIONS", payload=reviewed_proposal.model_dump())
                     
+                    # Store in transcript
+                    if root_id not in negotiation_transcripts:
+                        negotiation_transcripts[root_id] = []
+                    negotiation_transcripts[root_id].append({
+                        "iteration": proposal.proposal_id,
+                        "status": reviewed_proposal.consensus_status.value,
+                        "rationale": reviewed_proposal.rationale
+                    })
+                    
                     # 2. If Accepted, Route to Process 3 (Firewall)
                     if reviewed_proposal.consensus_status == ConsensusStatus.ACCEPTED:
                         logger.info("Consensus REACHED. Routing to Execution Node (Process 3)...")
@@ -47,10 +63,13 @@ def run_patriarch_daemon():
                                 logger.info("🔥 FIREWALL PASSED. Proposal is ready for execution.")
                                 axl_node.publish(topic="FIREWALL_CLEARED", payload=reviewed_proposal.model_dump())
                                 
+                                # Construct full transcript for audit trail
+                                full_transcript = json.dumps(negotiation_transcripts.get(root_id, []), indent=2)
+                                
                                 # Save the immutable receipt to 0G & index in ChromaDB
                                 memory_manager.save_decision(
                                     proposal=reviewed_proposal.model_dump(),
-                                    transcript=f"Quant Proposed, Patriarch Evaluated: {reviewed_proposal.rationale}"
+                                    transcript=full_transcript
                                 )
                                 
                         except ValueError as e:

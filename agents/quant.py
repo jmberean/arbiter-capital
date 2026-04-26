@@ -10,6 +10,7 @@ from core.market_god import generate_market_data
 from pydantic import ValidationError
 import os
 from dotenv import load_dotenv
+from memory.memory_manager import MemoryManager
 
 load_dotenv()
 
@@ -54,9 +55,10 @@ def calculate_optimal_rotation(market_data: dict) -> dict:
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
     market_data: dict
-    quant_analysis: dict
+    quant_analysis: Optional[dict]
     historical_context: list
     current_proposal: Optional[Proposal]
+    patriarch_feedback: Optional[str]
     iteration: int
 
 # --- Nodes ---
@@ -65,19 +67,16 @@ def quantitative_ingestion(state: AgentState):
     market_data = state.get("market_data", generate_market_data("normal"))
     analysis = calculate_optimal_rotation(market_data)
     
-    # Pass the data along to the LLM context
     return {
         "market_data": market_data,
         "quant_analysis": analysis,
         "iteration": state.get("iteration", 0) + 1
     }
 
-from memory.memory_manager import MemoryManager
-
 def recall_memory(state: AgentState):
     """Queries ChromaDB/0G for historical decisions related to the current analysis."""
-    analysis = state["quant_analysis"]
-    if analysis["suggested_action"] == "NONE":
+    analysis = state.get("quant_analysis")
+    if not analysis or analysis["suggested_action"] == "NONE":
         return {"historical_context": []}
         
     mm = MemoryManager()
@@ -87,14 +86,14 @@ def recall_memory(state: AgentState):
 
 def generate_proposal(state: AgentState):
     """Uses LLM to translate math analysis into a structured JSON Proposal."""
-    analysis = state["quant_analysis"]
+    analysis = state.get("quant_analysis")
+    feedback = state.get("patriarch_feedback")
     
-    if analysis["suggested_action"] == "NONE":
+    if analysis and analysis["suggested_action"] == "NONE" and not feedback:
         logger.info("No actionable trade identified by math models.")
         return {"current_proposal": None}
 
     llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0.2)
-    # We instruct the LLM to strictly output the JSON structure matching our Pydantic model
     structured_llm = llm.with_structured_output(Proposal)
     
     system_prompt = f"""
@@ -102,7 +101,7 @@ def generate_proposal(state: AgentState):
     Your strict objective is to translate the provided quantitative analysis into a valid structured Proposal.
     
     Quantitative Analysis:
-    {json.dumps(analysis, indent=2)}
+    {json.dumps(analysis, indent=2) if analysis else "N/A"}
     
     Historical Context (Past decisions verified on 0G):
     {json.dumps(state.get('historical_context', []), indent=2)}
@@ -114,13 +113,18 @@ def generate_proposal(state: AgentState):
     - Use historical context to inform your rationale.
     """
     
-    # If there are previous messages (e.g., feedback from Patriarch), include them
+    if feedback:
+        system_prompt += f"\n\nCRITICAL: Your previous proposal was REJECTED by the Risk Patriarch. \nFeedback from Patriarch: {feedback}\nYou MUST adjust your next proposal to address these specific risk concerns while still pursuing yield optimization."
+
     messages = [SystemMessage(content=system_prompt)] + list(state.get("messages", []))
     
     try:
         proposal = structured_llm.invoke(messages)
-        logger.info(f"Drafted Proposal: {proposal.proposal_id}")
-        return {"current_proposal": proposal, "messages": [HumanMessage(content=f"Generated proposal: {proposal.json()}") ]}
+        logger.info(f"Drafted Proposal: {proposal.proposal_id} (Iteration: {state.get('iteration')})")
+        return {
+            "current_proposal": proposal, 
+            "messages": [HumanMessage(content=f"Generated proposal: {proposal.json()}") ]
+        }
     except Exception as e:
         logger.error(f"Failed to generate valid proposal: {e}")
         return {"current_proposal": None}

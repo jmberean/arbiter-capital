@@ -17,12 +17,15 @@ def run_quant_daemon():
     last_feedback_id = 0
     last_execution_id = 0
     
+    # Track proposal states for iteration
+    # proposal_id -> {market_data, iteration, messages}
+    proposal_history = {}
+    
     logger.info("Quant listening for Market Data, Patriarch Feedback, and Execution Status...")
     
     while True:
         try:
             # 1. Listen for new market data
-            # ... (existing market data loop)
             market_messages = axl_node.subscribe(topic="MARKET_DATA", last_id=last_market_id)
             for msg in market_messages:
                 last_market_id = msg["id"]
@@ -37,6 +40,13 @@ def run_quant_daemon():
                     if not proposal.proposal_id or proposal.proposal_id == "uuid_placeholder":
                         proposal.proposal_id = f"prop_{uuid.uuid4().hex[:8]}"
                     
+                    # Store state for potential iteration
+                    proposal_history[proposal.proposal_id] = {
+                        "market_data": market_data,
+                        "iteration": result.get("iteration", 1),
+                        "messages": result.get("messages", [])
+                    }
+                    
                     logger.info(f"Publishing Proposal {proposal.proposal_id} to AXL Network...")
                     axl_node.publish(topic="PROPOSALS", payload=proposal.model_dump())
                 else:
@@ -47,15 +57,43 @@ def run_quant_daemon():
             for msg in feedback_messages:
                 last_feedback_id = msg["id"]
                 evaluation = msg["payload"]
+                
                 if evaluation["consensus_status"] == ConsensusStatus.REJECTED.value:
-                    logger.warning(f"Quant received REJECTION for {evaluation['proposal_id']}. Rationale: {evaluation['rationale']}")
-
-            # 3. Listen for execution success notifications
-            execution_messages = axl_node.subscribe(topic="EXECUTION_SUCCESS", last_id=last_execution_id)
-            for msg in execution_messages:
-                last_execution_id = msg["id"]
-                execution_data = msg["payload"]
-                logger.info(f"🎉 CONFIRMATION: Proposal {execution_data['proposal_id']} executed successfully on-chain! Tx: {execution_data['tx_hash']}")
+                    prop_id = evaluation["proposal_id"]
+                    logger.warning(f"Quant received REJECTION for {prop_id}. Rationale: {evaluation['rationale']}")
+                    
+                    if prop_id in proposal_history:
+                        history = proposal_history[prop_id]
+                        if history["iteration"] < 3: # Limit iterations
+                            logger.info(f"Iterating on proposal {prop_id} based on Patriarch feedback...")
+                            
+                            state = {
+                                "market_data": history["market_data"],
+                                "messages": history["messages"],
+                                "iteration": history["iteration"],
+                                "patriarch_feedback": evaluation["rationale"]
+                            }
+                            
+                            result = quant_app.invoke(state)
+                            new_proposal: Proposal = result.get("current_proposal")
+                            
+                            if new_proposal:
+                                # Update history with new proposal ID (or keep same)
+                                # For clarity, we'll give it a new ID or suffix
+                                new_proposal.proposal_id = f"{prop_id}_v{history['iteration']+1}"
+                                
+                                proposal_history[new_proposal.proposal_id] = {
+                                    "market_data": history["market_data"],
+                                    "iteration": result.get("iteration", history["iteration"] + 1),
+                                    "messages": result.get("messages", [])
+                                }
+                                
+                                logger.info(f"Publishing REVISED Proposal {new_proposal.proposal_id} to AXL Network...")
+                                axl_node.publish(topic="PROPOSALS", payload=new_proposal.model_dump())
+                            else:
+                                logger.info("Quant conceded after feedback. No revised proposal.")
+                        else:
+                            logger.error(f"Max iterations reached for {prop_id}. Stopping negotiation.")
 
             time.sleep(2) # Polling interval
             
