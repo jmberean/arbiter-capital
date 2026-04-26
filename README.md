@@ -10,10 +10,10 @@ The system operates via three distinct processes to ensure decentralization and 
 
 1.  **Process 1: The Quant (Agent 1 Runtime)**
     *   **Objective:** Identify yield opportunities using math-first cognition.
-    *   **Stack:** LangGraph + Python Quantitative Scripts + Claude 3.5 Sonnet.
+    *   **Stack:** LangGraph + Python Quantitative Scripts + GPT-5.5.
 2.  **Process 2: The Patriarch (Agent 2 Runtime)**
     *   **Objective:** Capital preservation and strict adherence to drawdown limits.
-    *   **Stack:** LangGraph + Claude 3.5 Sonnet.
+    *   **Stack:** LangGraph + GPT-5.5.
 3.  **Process 3: The Execution Node & Policy Firewall**
     *   **Objective:** Enforces deterministic safety rules and routes payloads to execution.
     *   **Stack:** Deterministic Python runtime (No LLMs).
@@ -25,7 +25,7 @@ The current MVP implements a local simulation of the multi-agent negotiation pro
 ### Prerequisites
 
 *   Python 3.10+
-*   Anthropic API Key
+*   OpenAI API Key
 
 ### Setup
 
@@ -40,7 +40,7 @@ The current MVP implements a local simulation of the multi-agent negotiation pro
     ```bash
     cp .env.example .env
     ```
-    *Edit `.env` and set your `ANTHROPIC_API_KEY`.*
+    *Edit `.env` and set your `OPENAI_API_KEY`.*
 
 ### Running the End-to-End Simulation
 

@@ -2,7 +2,7 @@ import json
 import logging
 from typing import TypedDict, Annotated, Sequence, Optional
 import operator
-from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 from core.models import Proposal, ConsensusStatus
@@ -30,7 +30,7 @@ def evaluate_proposal(state: AgentState):
 
     logger.info(f"Evaluating Proposal ID: {proposal.proposal_id}")
 
-    llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.1)
+    llm = ChatOpenAI(model="gpt-5.5", temperature=0.1)
     
     system_prompt = """
     You are the Risk Patriarch agent for Arbiter Capital.
@@ -81,8 +81,8 @@ workflow.add_edge("evaluate", END)
 patriarch_app = workflow.compile()
 
 if __name__ == "__main__":
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        logger.error("Please set ANTHROPIC_API_KEY in .env")
+    if not os.getenv("OPENAI_API_KEY"):
+        logger.error("Please set OPENAI_API_KEY in .env")
         exit(1)
         
     print("Testing Patriarch Agent...")

@@ -84,8 +84,8 @@ def run_simulation(scenario: str = "normal"):
 
 
 if __name__ == "__main__":
-    if not os.getenv("ANTHROPIC_API_KEY"):
-         logger.error("CRITICAL: ANTHROPIC_API_KEY environment variable is not set.")
+    if not os.getenv("OPENAI_API_KEY"):
+         logger.error("CRITICAL: OPENAI_API_KEY environment variable is not set.")
          exit(1)
          
     # Run the flash crash scenario

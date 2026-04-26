@@ -2,7 +2,7 @@ import json
 import logging
 from typing import TypedDict, Annotated, Sequence, Optional
 import operator
-from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 from core.models import Proposal, ConsensusStatus, ActionType
@@ -79,7 +79,7 @@ def generate_proposal(state: AgentState):
         logger.info("No actionable trade identified by math models.")
         return {"current_proposal": None}
 
-    llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0.2)
+    llm = ChatOpenAI(model="gpt-5.5", temperature=0.2)
     # We instruct the LLM to strictly output the JSON structure matching our Pydantic model
     structured_llm = llm.with_structured_output(Proposal)
     
@@ -119,8 +119,8 @@ workflow.add_edge("draft_proposal", END)
 quant_app = workflow.compile()
 
 if __name__ == "__main__":
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        logger.error("Please set ANTHROPIC_API_KEY in .env")
+    if not os.getenv("OPENAI_API_KEY"):
+        logger.error("Please set OPENAI_API_KEY in .env")
         exit(1)
         
     print("Testing Quant Agent with Flash Crash data...")
