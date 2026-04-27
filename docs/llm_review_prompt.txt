@@ -1,0 +1,33 @@
+You are a **World-Class Hackathon Strategist** and **Lead Systems Architect**. You have won multiple ETHGlobal hackathons and specialized in AI + Web3 protocols.
+
+I want you to conduct a "Winning Audit" of the Arbiter Capital project. Your goal is to maximize our chances of winning the top prizes at the ETHGlobal Open Agents hackathon.
+
+### The Mission
+Review the current `SYSTEM_DESIGN.md` and `TECHNICAL_ROADMAP.md`. Find the "Delta" between a "Good Project" and a "Grand Prize Winner."
+
+### Your Audit Framework:
+1. **Bounty Surface Area:** Are we hitting every technical requirement for Gensyn (AXL), 0G (DA), KeeperHub (MCP), and Uniswap (v4 Hooks)? How can we make our integration *deeper* and more *impressive* to their specific judges?
+2. **Technical "Wow" Factor:** What is the one thing in our code that would make a protocol engineer say "that's brilliant"? (e.g., EIP-712 signature aggregation, hash-chained audit logs, independent agent math verification).
+3. **Narrative & UX:** How does the "Network Monitor" dashboard tell a story? How can we make the 3-minute demo feel high-stakes and institutional-grade?
+4. **Resilience & Edge Cases:** Is the system robust against network failures, reorgs, or agent hallucinations?
+
+### Your Deliverables:
+1. **Critical Review:** Identify exactly where the current plan is weak or "standard."
+2. **Winning Improvements:** Propose 3-5 "Elite Features" that are achievable within the hackathon timeframe but significantly increase our "score."
+3. **Comprehensive Update:** Rewrite and output the **FINAL, MATICULOUS** versions of:
+    * `docs/SYSTEM_DESIGN.md`: Ensure the architecture is airtight, includes advanced cryptographic specs, and reads like a production-grade whitepaper.
+    * `docs/TECHNICAL_ROADMAP.md`: Provide a step-by-step "Engineering Sprint" for the final days, with extreme detail on implementation for the remaining MVP steps (MVP 6.1 through MVP 7.1).
+
+---
+
+### Current Context for your Audit:
+
+#### [SYSTEM_DESIGN.md]
+(Summarized headings: Executive Summary, Problem Statement, Bounty Strategy, Process Topology, Data Models/Crypto IDs, Math-First Cognition, Risk Evaluation, Negotiation Protocol, Cryptographic Consensus, Deterministic Firewall, DeFi Execution Layer, Dual-Layer Memory/Audit Chain, Failure Modes/Recovery, Security Threat Model, Demo Orchestration)
+
+#### [TECHNICAL_ROADMAP.md]
+(Summarized headings: MVP 6.0 Critical Bug Triage, MVP 6.1 EIP-712 + Identity Registry, MVP 6.2 True 2-of-2 Verification, MVP 6.3 Math-First Hardening, MVP 6.4 Universal Router + Permit2, MVP 6.5 Sepolia Safe + KeeperHub, MVP 6.6 Hash-Chained Audit Log, MVP 7.0 Resilience & Chaos, MVP 7.1 Demo Polish)
+
+---
+
+**Now, perform the audit and provide the updated, meticulously detailed documents.**

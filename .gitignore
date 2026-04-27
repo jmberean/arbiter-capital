@@ -12,3 +12,4 @@ test_chroma_db/
 axl_network.db
 .vscode/
 .pytest_cache/
+.claude/
