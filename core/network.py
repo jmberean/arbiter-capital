@@ -14,16 +14,29 @@ class MockAXLNode:
     Simulates a Gensyn AXL P2P node using a local SQLite database.
     Used for local development and testing.
     """
-    def __init__(self, node_id: str):
+    def __init__(self, node_id: str, url_env: str = "AXL_NODE_URL"):
         self.node_id = node_id
-        self._init_db()
-        self.axl_url = os.getenv("AXL_NODE_URL") # e.g. http://localhost:9002
+        self.axl_url = os.getenv(url_env)
         self.use_live_axl = self.axl_url is not None
+        self.demo_mode = os.getenv("DEMO_MODE") == "1"
+        self._init_db()
+        self._assert_demo_transport()
         
         if self.use_live_axl:
             logger.info(f"Node {node_id} initialized with LIVE AXL at {self.axl_url}")
         else:
-            logger.info(f"Node {node_id} initialized in MOCK (SQLite) mode.")
+            logger.info(f"Node {node_id} initialized in MOCK (SQLite) mode — DEV ONLY.")
+
+    def _assert_demo_transport(self) -> None:
+        """Fail-closed if DEMO_MODE=1 and we'd silently fall back to SQLite."""
+        if self.demo_mode and not self.use_live_axl:
+            logger.error(
+                f"DEMO_MODE=1 but {self.node_id} has no AXL_NODE_URL set. "
+                "SQLite mock is a centralized broker and violates the Gensyn bounty's "
+                "'no centralized message brokers' requirement. Refusing to start."
+            )
+            import sys
+            sys.exit(1)
 
     def _init_db(self):
         with sqlite3.connect(DB_PATH) as conn:

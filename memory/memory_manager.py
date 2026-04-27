@@ -60,6 +60,33 @@ class MemoryManager:
             embedding_function=openai_ef
         )
 
+    def write_artifact(self, kind: str, payload: dict) -> str:
+        """Generic write that handles both 0G L1 and local mock."""
+        artifact = {
+            "receipt_type": kind,
+            "timestamp": time.time(),
+            "payload": payload
+        }
+        return self._write_to_0g(artifact)
+
+    def read_artifact(self, tx_hash_or_local_hash: str) -> dict:
+        """Retrieve an artifact from 0G storage (local or L1)."""
+        file_path = os.path.join(self.storage_path, f"{tx_hash_or_local_hash}.json")
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                return json.load(f)
+        
+        if self.live_mode:
+            # In real 0G, we'd fetch the transaction data from the RPC
+            try:
+                tx = self.w3.eth.get_transaction(tx_hash_or_local_hash)
+                data_text = self.w3.to_text(tx['input'])
+                return json.loads(data_text)
+            except Exception as e:
+                logger.error(f"Failed to retrieve from 0G L1: {e}")
+        
+        raise FileNotFoundError(f"Artifact {tx_hash_or_local_hash} not found in storage.")
+
     def _write_to_0g(self, decision_receipt: dict) -> str:
         """
         Writes the immutable decision receipt to the 0G Layer 1 Data Availability Testnet.
@@ -84,7 +111,7 @@ class MemoryManager:
                 }
                 
                 signed_tx = self.w3.eth.account.sign_transaction(tx, self.zero_g_private_key)
-                tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction).hex()
+                tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction).hex()
                 
                 logger.info(f"Permanently written to 0G Testnet. Tx Hash: {tx_hash}")
                 

@@ -1,112 +1,127 @@
 import json
 import logging
-from typing import TypedDict, Annotated, Sequence, Optional
+from typing import TypedDict, Annotated, Sequence, Optional, Literal
 import operator
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
-from core.models import Proposal, ConsensusStatus
-from pydantic import ValidationError
+from core.models import Proposal, ConsensusStatus, ActionType
+from pydantic import BaseModel, Field, ValidationError
 import os
+import time
 from dotenv import load_dotenv
+from agents.quant import calculate_optimal_rotation
+from eth_utils import keccak
+from memory.llm_context_writer import capture_and_persist
 
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("PatriarchAgent")
 
+class ProposalEvaluation(BaseModel):
+    proposal_id: str
+    iteration: int
+    consensus_status: Literal["ACCEPTED","REJECTED"]
+    rejection_reason: Optional[Literal[
+        "RISK_OVERRUN","MATH_MISMATCH","OUTSIDE_MANDATE","GAS_INEFFICIENT",
+        "WHITELIST_VIOLATION","TIMING_RISK","SIM_REVERT","OTHER"]] = None
+    rejection_detail: Optional[str] = None
+
 # --- Agent State ---
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], operator.add]
     incoming_proposal: Optional[Proposal]
+    market_data: Optional[dict]
+    patriarch_recompute: Optional[dict]
+    evaluation_pre_sim: Optional[ProposalEvaluation]
     reviewed_proposal: Optional[Proposal]
+    llm_raw_response: Optional[str]
+    llm_messages: Optional[list]
+
+def _reject(p: Proposal, reason: str, detail: str) -> Proposal:
+    reviewed = p.model_copy(deep=True)
+    reviewed.consensus_status = ConsensusStatus.REJECTED
+    reviewed.rationale += f" | REJECTED: {reason} - {detail}"
+    return reviewed
 
 # --- Nodes ---
+def deterministic_recheck(state: AgentState):
+    p = state["incoming_proposal"]
+    md = state.get("market_data")
+    if not md:
+        return {"reviewed_proposal": _reject(p, "MATH_MISMATCH", "no market_data provided")}
+    
+    a = calculate_optimal_rotation(md)
+    canonical = json.dumps(a, sort_keys=True, separators=(",",":")).encode()
+    expected = "0x" + keccak(canonical).hex()
+    
+    if expected != p.quant_analysis_hash:
+        logger.warning(f"Math mismatch: expected {expected}, got {p.quant_analysis_hash}")
+        return {"reviewed_proposal": _reject(p, "MATH_MISMATCH", f"recomputed {expected}, claimed {p.quant_analysis_hash}")}
+    
+    return {"patriarch_recompute": a}
+
 def evaluate_proposal(state: AgentState):
-    """Evaluates the incoming proposal against strict risk metrics."""
-    proposal = state["incoming_proposal"]
-    if not proposal:
-        return {"reviewed_proposal": None}
+    p = state["incoming_proposal"]
+    if state.get("reviewed_proposal"): return {} # already rejected in recheck
 
-    logger.info(f"Evaluating Proposal ID: {proposal.proposal_id}")
-
-    llm = ChatOpenAI(model="gpt-5.4-nano", temperature=0.1)
+    model_id = "gpt-4o"
+    temperature = 0.1
+    llm = ChatOpenAI(model=model_id, temperature=temperature)
+    structured_llm = llm.with_structured_output(ProposalEvaluation)
     
     system_prompt = """
     You are the Risk Patriarch agent for Arbiter Capital.
-    Your objective is capital preservation. You must evaluate the incoming Proposal.
-    
-    Risk Parameters:
-    - Maximum acceptable risk_score is 5.0. If higher, REJECT.
-    - Target protocol must be Uniswap_V4. If not, REJECT.
-    - If the action is SWAP and asset_out is a stablecoin (USDC) during high volatility, favor ACCEPT.
-    
-    Output JSON format only, matching the exact schema of the incoming proposal, but update the 'consensus_status' to ACCEPTED or REJECTED.
-    If REJECTED, append your reasoning to the 'rationale' field.
+    Your objective is capital preservation. Evaluate the incoming Proposal.
     """
-    
-    structured_llm = llm.with_structured_output(Proposal)
-    
     messages = [
         SystemMessage(content=system_prompt),
-        HumanMessage(content=f"Evaluate this proposal:\n{proposal.model_dump_json(indent=2)}")
+        HumanMessage(content=f"Evaluate this proposal:\n{p.model_dump_json(indent=2)}")
     ]
     
     try:
-        reviewed = structured_llm.invoke(messages)
+        ev = structured_llm.invoke(messages)
         
-        # Fallback deterministic check in case LLM hallucinations bypass instructions
-        if reviewed.risk_score_evaluation > 5.0 and reviewed.consensus_status == ConsensusStatus.ACCEPTED:
-             logger.warning("LLM approved a high-risk proposal. Overriding to REJECTED.")
-             reviewed.consensus_status = ConsensusStatus.REJECTED
-             reviewed.rationale += " | OVERRIDE: Risk score exceeds threshold of 5.0."
-             
-        logger.info(f"Proposal {reviewed.proposal_id} evaluated as: {reviewed.consensus_status.value}")
-        return {"reviewed_proposal": reviewed, "messages": [HumanMessage(content=f"Evaluation complete. Status: {reviewed.consensus_status.value}")]}
+        # Capture LLM context
+        ctx_hash, tx_hash = capture_and_persist(
+            agent="Patriarch_Node_B",
+            proposal_id=p.proposal_id,
+            iteration=p.iteration,
+            model_id=model_id,
+            temperature=temperature,
+            seed=None,
+            schema=ProposalEvaluation.model_json_schema(),
+            schema_name="ProposalEvaluation",
+            system_prompt=system_prompt,
+            messages=[m.dict() for m in messages],
+            response_raw=ev.model_dump_json(),
+            parsed_obj=ev,
+            tools_invoked=[]
+        )
         
+        reviewed = p.model_copy(deep=True)
+        reviewed.consensus_status = ConsensusStatus(ev.consensus_status)
+        if ev.consensus_status == "REJECTED":
+            reviewed.rationale += f" | REJECTED: {ev.rejection_reason} - {ev.rejection_detail}"
+        
+        return {
+            "evaluation_pre_sim": ev,
+            "reviewed_proposal": reviewed,
+            "llm_raw_response": ev.model_dump_json(),
+            "llm_messages": [m.dict() for m in messages]
+        }
     except Exception as e:
         logger.error(f"Failed to evaluate proposal: {e}")
-        # Default to safe state on error
-        proposal.consensus_status = ConsensusStatus.REJECTED
-        proposal.rationale += f" | System error during evaluation: {e}"
-        return {"reviewed_proposal": proposal}
+        return {"reviewed_proposal": _reject(p, "OTHER", str(e))}
 
 # --- Graph Definition ---
 workflow = StateGraph(AgentState)
+workflow.add_node("recheck", deterministic_recheck)
 workflow.add_node("evaluate", evaluate_proposal)
 
-workflow.set_entry_point("evaluate")
+workflow.set_entry_point("recheck")
+workflow.add_edge("recheck", "evaluate")
 workflow.add_edge("evaluate", END)
 
 patriarch_app = workflow.compile()
-
-if __name__ == "__main__":
-    if not os.getenv("OPENAI_API_KEY"):
-        logger.error("Please set OPENAI_API_KEY in .env")
-        exit(1)
-        
-    print("Testing Patriarch Agent...")
-    
-    # Mock a high-risk proposal from Quant
-    mock_proposal = Proposal(
-        proposal_id="test_001",
-        target_protocol="Uniswap_V4",
-        action="SWAP",
-        asset_in="WETH",
-        asset_out="SOL",
-        amount_in=10.0,
-        projected_apy=12.0,
-        risk_score_evaluation=6.5, # Should trigger rejection
-        rationale="High yield rotation.",
-        consensus_status=ConsensusStatus.PENDING
-    )
-    
-    state = {
-        "incoming_proposal": mock_proposal,
-        "messages": []
-    }
-    
-    result = patriarch_app.invoke(state)
-    if result.get("reviewed_proposal"):
-         print("\nFinal Evaluated JSON:")
-         print(result["reviewed_proposal"].model_dump_json(indent=2))

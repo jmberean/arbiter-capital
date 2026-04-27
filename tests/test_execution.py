@@ -3,11 +3,10 @@ import unittest.mock as mock
 import sys
 import os
 
-# Mock the safe_eth and eth_account modules before they are imported by SafeTreasury
+# Mock the safe_eth module before it's imported by SafeTreasury
 sys.modules["safe_eth"] = mock.MagicMock()
 sys.modules["safe_eth.eth"] = mock.MagicMock()
 sys.modules["safe_eth.safe"] = mock.MagicMock()
-sys.modules["eth_account"] = mock.MagicMock()
 
 from core.models import Proposal, ActionType, ConsensusStatus
 from execution.safe_treasury import SafeTreasury
@@ -50,8 +49,8 @@ def test_safe_treasury_mock():
         consensus_status=ConsensusStatus.ACCEPTED
     )
     
-    tx_hash = treasury.execute_proposal(proposal, b"0xdata")
-    assert tx_hash.startswith("mock_tx_")
+    tx_hash = treasury.execute_with_signatures(proposal, b"0xdata", ["sig1"])
+    assert tx_hash.startswith("0x")
 
 def test_keeper_hub_mock():
     client = KeeperHubClient()

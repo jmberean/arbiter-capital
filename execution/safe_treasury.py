@@ -48,17 +48,14 @@ class SafeTreasury:
         safe_tx = self.safe.build_multisig_tx(to=to, value=value, data=data)
         return safe_tx.safe_tx_hash.hex()
 
-    def sign_hash(self, safe_tx_hash: str) -> str:
-        """Signs a transaction hash with the local private key."""
-        # eth_account sign_message works without safe_eth lib
-        # We need to use encode_defunct or sign_message carefully
-        signature = self.executor_account.sign_message(
-            # Safe expects the signature of the safe_tx_hash
-            # We use a simplified mock signature if no real key is provided
-            # but using real Account.sign_message is better.
-            Web3.to_bytes(hexstr=safe_tx_hash)
-        )
-        return signature.signature.hex()
+    def sign_hash(self, safe_tx_hash: str, key: bytes | None = None) -> str:
+        """Sign a 32-byte EIP-712 digest. Use unsafe_sign_hash — Safe expects raw hash sigs."""
+        signing_key = key if key is not None else self.executor_account.key
+        digest = bytes.fromhex(safe_tx_hash[2:] if safe_tx_hash.startswith("0x") else safe_tx_hash)
+        if len(digest) != 32:
+            raise ValueError(f"safe_tx_hash must be 32 bytes, got {len(digest)}")
+        signed = Account.unsafe_sign_hash(digest, signing_key)
+        return signed.signature.hex()
 
     def execute_with_signatures(self, proposal: Proposal, calldata: bytes, signatures: list):
         """
