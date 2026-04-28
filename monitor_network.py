@@ -97,10 +97,14 @@ def _treasury_panel() -> Panel:
     )
     nonce = json.loads(nonce_rows[0]["payload"]).get("safe_nonce", "?") if nonce_rows else "?"
 
+    verifier_url = "http://localhost:7777"
     body = "\n".join(
         ["[bold]Recent executions:[/bold]"] + (lines or ["  (none yet)"]) +
         ["", "[bold]SBT mints:[/bold]"] + (sbt_lines or ["  (none yet)"]) +
-        [f"", f"Safe nonce (last): {nonce}"]
+        ["", f"Safe nonce (last): {nonce}",
+         "", "[bold]Public Verifier:[/bold]",
+         f"  [link={verifier_url}][cyan]{verifier_url}[/cyan][/link]",
+         "  [dim]python monitor/public_verifier/server.py[/dim]"]
     )
     return Panel(body, title="Treasury State", border_style="blue")
 

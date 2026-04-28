@@ -63,7 +63,7 @@ This roadmap is a **drop-in implementation playbook**. v5.0 layers five elite fe
   - [x] Step 7.3 — Chaos test scripts
 - [10. Day 9 — MVP 7.1: Demo Polish + Public Verifier + QR ✱ Elite-5b](#10-day-9--mvp-71-demo-polish--public-verifier--qr--elite-5b)
   - [x] Step 8.1 — Multi-pane "God View" monitor
-  - [ ] Step 8.2 — Public verifier page ✱ elite-5b
+  - [x] Step 8.2 — Public verifier page ✱ elite-5b
   - [x] Step 8.3 — Demo orchestration script
   - [x] Step 8.4 — `docs/KEEPERHUB_FEEDBACK.md` ✱ compliance-8
   - [ ] Step 8.5 — Dress rehearsal
@@ -1103,7 +1103,7 @@ def walk_chain(self, head_hash: str | None = None) -> bool:
     return True
 ```
 
-### [ ] Step 6.6 — Reorg awareness
+### [x] Step 6.6 — Reorg awareness
 `MIN_CONFIRMATIONS = 3`. Verifier polls until receipt has ≥3 confirmations before declaring `CONFIRMED`.
 
 ### [x] Step 6.7 — **ArbiterReceipt SBT (elite-5a)**
@@ -1135,7 +1135,7 @@ mint_tx = nft.functions.mintReceipt(receipt_hash_bytes32, zero_g_uri).build_tran
 
 **Objective:** Survive the chaos matrix. **Demonstrate adversarial resilience on camera via the Byzantine Watchdog.**
 
-### [ ] Step 7.1 — Heartbeats + reconnection backoff
+### [x] Step 7.1 — Heartbeats + reconnection backoff
 * `core/retry.py` — exponential backoff with jitter.
 * `Heartbeat` published every 5s by every daemon.
 * Patriarch silence > 30s ⇒ Quant marks proposal `EXPIRED`.
@@ -1220,7 +1220,7 @@ def attack_A6_wrong_domain(real_proposal: Proposal):
 
 **Forensic 0G writes:** every defender (Patriarch, Execution Node) calls `publish_attack_rejection(attack_id, kind, evidence)` which writes an `AttackRejection` receipt to 0G **and** publishes to AXL.
 
-### [ ] Step 7.3 — Chaos test scripts
+### [x] Step 7.3 — Chaos test scripts
 **New directory:** `scripts/chaos/`
 
 | Script | Asserts |
@@ -1240,7 +1240,7 @@ def attack_A6_wrong_domain(real_proposal: Proposal):
 
 **Objective:** Lock the demo recording flow. Audience-verifiable.
 
-### [ ] Step 8.1 — Multi-pane "God View" monitor
+### [x] Step 8.1 — Multi-pane "God View" monitor
 **File:** `monitor/monitor_network.py`
 
 `rich.layout.Layout` with four columns:
@@ -1249,7 +1249,7 @@ def attack_A6_wrong_domain(real_proposal: Proposal):
 3. **Audit Chain Tail**: last 5 0G receipts with `tx_hash`, `prev_0g_tx_hash`, signature recovery results.
 4. **Watchdog Evidence**: red-flash list of `ATTACK_REJECTED` events with kind + defender.
 
-### [ ] Step 8.2 — Public verifier page (elite-5b)
+### [x] Step 8.2 — Public verifier page (elite-5b)
 **New directory:** `monitor/public_verifier/`
 
 Static site (Next.js or plain HTML+JS) deployed to Vercel:
@@ -1262,7 +1262,7 @@ The Monitor pane #2 renders a QR linking to this page.
 
 **Recording-day rehearsal:** Day 9 dress rehearsal includes recording someone scanning the QR with their phone and seeing the same `CHAIN VERIFIED` state.
 
-### [ ] Step 8.3 — Demo orchestration script
+### [x] Step 8.3 — Demo orchestration script
 **New file:** `scripts/demo_run.py`
 
 ```python
@@ -1290,7 +1290,7 @@ STEPS = [
 
 The script blocks at each step until either the assertion fires or the timeout expires. Timeout aborts with a clear error.
 
-### [ ] Step 8.4 — `docs/KEEPERHUB_FEEDBACK.md` ✱ compliance-8 (Builder Feedback Bounty $250)
+### [x] Step 8.4 — `docs/KEEPERHUB_FEEDBACK.md` ✱ compliance-8 (Builder Feedback Bounty $250)
 
 KeeperHub's Builder Feedback bounty pays $250 for "specific, actionable feedback on UX friction, reproducible bugs, or documentation gaps encountered while using KeeperHub during the event." Up to two teams win. We've used KeeperHub all week — by Day 9 we'll have accumulated friction points. **This is the cheapest $250 in the prize pool**; do not skip it.
 

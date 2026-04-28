@@ -91,6 +91,12 @@ def check_compliance():
     check("audit.walk_from_head", "walk_from_head" in va and "walk_chain" in va,
           "(verify_audit.py chain walk)")
 
+    # 12. Public verifier page + server (elite-5b)
+    check("verifier.html", os.path.exists("monitor/public_verifier/index.html"),
+          "(monitor/public_verifier/index.html)")
+    check("verifier.server", os.path.exists("monitor/public_verifier/server.py"),
+          "(monitor/public_verifier/server.py)")
+
     # Print results
     print()
     for line in ok:
