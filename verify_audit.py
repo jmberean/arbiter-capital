@@ -4,6 +4,7 @@ import json
 import logging
 import hashlib
 import argparse
+import time
 from typing import Optional
 from web3 import Web3
 import chromadb
@@ -14,6 +15,10 @@ load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("AuditVerifier")
+
+MIN_CONFIRMATIONS = 3
+CONFIRMATION_POLL_INTERVAL = 2.0  # seconds between polls
+CONFIRMATION_TIMEOUT = 120.0      # give up after 2 minutes
 
 
 class AuditVerifier:
@@ -42,6 +47,12 @@ class AuditVerifier:
 
         cur, count = head, 0
         while cur:
+            # Step 6.6: wait for MIN_CONFIRMATIONS before treating an on-chain receipt as final
+            if cur.startswith("0x") and self.w3.is_connected():
+                if not self._wait_for_confirmations(cur):
+                    print(f"CONFIRMATION TIMEOUT — receipt {cur[:12]}… may be in a reorg. Aborting.")
+                    return False
+
             try:
                 receipt = self._fetch_receipt(cur)
             except Exception as e:
@@ -59,7 +70,8 @@ class AuditVerifier:
                 print(f"  ⚠ ATTACK_REJECTED [{payload.get('attack_kind')}] — "
                       f"defended by {payload.get('detected_by')}")
             else:
-                print(f"  ✓ [{rtype}] receipt_id={rid}")
+                confs_label = f" [{MIN_CONFIRMATIONS}+ confs]" if cur.startswith("0x") else " [local]"
+                print(f"  ✓ [{rtype}] receipt_id={rid}{confs_label}")
 
             cur = receipt.get("prev_0g_tx_hash")
             count += 1
@@ -80,6 +92,27 @@ class AuditVerifier:
             except Exception as e:
                 raise FileNotFoundError(f"Not found on-chain: {e}")
         raise FileNotFoundError(f"Receipt {tx_hash} not found locally or on-chain.")
+
+    def _wait_for_confirmations(self, tx_hash: str, min_confirmations: int = MIN_CONFIRMATIONS) -> bool:
+        """Poll until tx_hash has at least min_confirmations, or timeout. Returns True if confirmed."""
+        if not tx_hash.startswith("0x"):
+            return True  # local mock hash — no on-chain reorg risk
+        deadline = time.time() + CONFIRMATION_TIMEOUT
+        while time.time() < deadline:
+            try:
+                receipt = self.w3.eth.get_transaction_receipt(tx_hash)
+                if receipt and receipt.get("blockNumber"):
+                    current_block = self.w3.eth.block_number
+                    confs = current_block - receipt["blockNumber"] + 1
+                    if confs >= min_confirmations:
+                        logger.debug(f"{tx_hash[:12]}… confirmed ({confs} blocks)")
+                        return True
+                    logger.debug(f"{tx_hash[:12]}… waiting for confirmations ({confs}/{min_confirmations})")
+            except Exception as e:
+                logger.warning(f"Confirmation poll error for {tx_hash[:12]}…: {e}")
+            time.sleep(CONFIRMATION_POLL_INTERVAL)
+        logger.error(f"Timeout waiting for {min_confirmations} confirmations on {tx_hash[:12]}…")
+        return False
 
     def _integrity_ok(self, receipt: dict) -> bool:
         stored_hash = receipt.get("receipt_hash")

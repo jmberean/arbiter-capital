@@ -9,6 +9,75 @@ This roadmap is a **drop-in implementation playbook**. v5.0 layers five elite fe
 
 ---
 
+## Table of Contents
+
+- [0. Status Snapshot](#0-status-snapshot-as-of-2026-04-26)
+- [1. Sprint Schedule (10-Day Countdown)](#1-sprint-schedule-10-day-countdown)
+- [2. Day 1 — MVP 6.0: Critical Bug Triage](#2-day-1--mvp-60-critical-bug-triage)
+  - [x] Step 0.1 — Fix `eth_account` signing API
+  - [x] Step 0.2 — Fix web3 7.15 attribute
+  - [x] Step 0.3 — Fix test suite collection
+  - [ ] Step 0.4 — Live Gensyn AXL deployment ✱ compliance-6
+  - [x] Step 0.5 — State directory + cursor persistence
+- [3. Day 2 — MVP 6.1: EIP-712 + Identity Registry + Quant Signing + LLMContext Capture](#3-day-2--mvp-61-eip-712--identity-registry--quant-signing--llmcontext-capture)
+  - [x] Step 1.1 — Crypto utilities
+  - [x] Step 1.2 — Identity registry
+  - [x] Step 1.3 — Extend Proposal model
+  - [x] Step 1.4 — LLMContext model + capture helper
+  - [x] Step 1.5 — Quant signs at end of LangGraph
+  - [x] Step 1.6 — SafeTreasury upgrades
+- [4. Day 3 — MVP 6.2: True 2-of-2 + ConsensusBundle + Dedupe](#4-day-3--mvp-62-true-2-of-2--consensusbundle--dedupe)
+  - [x] Step 2.1 — Patriarch verifies, recomputes, then signs
+  - [x] Step 2.2 — Dedupe ledger
+  - [x] Step 2.3 — Execution Node — real verification
+  - [x] Step 2.4 — Remove duplicate `time.sleep(2)`
+- [5. Day 4 — MVP 6.3: Math-First Hardening](#5-day-4--mvp-63-math-first-hardening)
+  - [x] Step 3.1 — Hash the Quant analysis
+  - [x] Step 3.2 — Self-audit node
+  - [x] Step 3.3 — Patriarch independently re-runs
+  - [x] Step 3.4 — Constrain Patriarch LLM
+  - [x] Step 3.5 — Decimals discipline everywhere
+- [6. Day 5 — MVP 6.4: UR + Permit2 + ArbiterThrottleHook ✱ Elite-1](#6-day-5--mvp-64-ur--permit2--arbiterthrottlehook--elite-1)
+  - [ ] Step 4.1 — Pin all addresses Day-5 morning
+  - [x] Step 4.2 — UR calldata builder
+  - [x] Step 4.3 — Refactor `UniswapV4Router.generate_calldata`
+  - [x] Step 4.4 — Permit2 helper
+  - [ ] Step 4.5 — Deploy ArbiterThrottleHook ✱ elite-1
+- [7. Day 6 — MVP 6.5: Sepolia Safe + KeeperHub Module + Sim Oracle ✱ Elite-3](#7-day-6--mvp-65-sepolia-safe--keeperhub-module--sim-oracle--elite-3)
+  - [ ] Step 5.1 — Deploy 2-of-2 Safe on Sepolia
+  - [ ] Step 5.2 — Enable KeeperHub Module
+  - [ ] Step 5.3 — KeeperHub Sim Oracle ✱ elite-3
+  - [ ] Step 5.4 — End-to-end live tx
+  - [x] Step 5.5 — `langchain_keeperhub.py` bridge ✱ compliance-7
+- [8. Day 7 — MVP 6.6: Hash-Chained Audit + 0G LLM Substrate ✱ Elite-2 + ArbiterReceipt SBT ✱ Elite-5a](#8-day-7--mvp-66-hash-chained-audit--0g-llm-substrate--elite-2--arbiterreceipt-sbt--elite-5a)
+  - [x] Step 6.1 — Audit chain head pointer
+  - [x] Step 6.2 — Receipt taxonomy
+  - [x] Step 6.3 — MemoryManager writes the chain
+  - [x] Step 6.4 — `replay_decision.py`
+  - [x] Step 6.5 — Verifier walks the chain
+  - [x] Step 6.6 — Reorg awareness
+  - [x] Step 6.7 — ArbiterReceipt SBT ✱ elite-5a
+- [9. Day 8 — MVP 7.0: Resilience + Byzantine Watchdog ✱ Elite-4 + Chaos](#9-day-8--mvp-70-resilience--byzantine-watchdog--elite-4--chaos)
+  - [x] Step 7.1 — Heartbeats + reconnection backoff
+  - [x] Step 7.2 — Byzantine Watchdog ✱ elite-4
+  - [x] Step 7.3 — Chaos test scripts
+- [10. Day 9 — MVP 7.1: Demo Polish + Public Verifier + QR ✱ Elite-5b](#10-day-9--mvp-71-demo-polish--public-verifier--qr--elite-5b)
+  - [x] Step 8.1 — Multi-pane "God View" monitor
+  - [ ] Step 8.2 — Public verifier page ✱ elite-5b
+  - [x] Step 8.3 — Demo orchestration script
+  - [x] Step 8.4 — `docs/KEEPERHUB_FEEDBACK.md` ✱ compliance-8
+  - [ ] Step 8.5 — Dress rehearsal
+- [11. Day 10 — Submission](#11-day-10--submission)
+  - [ ] Step 9.0 — `scripts/check_bounty_compliance.py`
+  - [ ] Step 9.1 — Final documentation
+  - [ ] Step 9.2 — Final smoke test
+  - [ ] Step 9.3 — Recording & submission
+- [12. Risk Register](#12-risk-register)
+- [13. Acceptance Criteria for Submission](#13-acceptance-criteria-for-submission)
+- [14. Post-Hackathon (v6 backlog)](#14-post-hackathon-v6-backlog-not-in-scope)
+
+---
+
 ## 0. Status Snapshot (as of 2026-04-26)
 
 ### What is **actually** implemented (real code in repo)
