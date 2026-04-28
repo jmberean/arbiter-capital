@@ -68,17 +68,23 @@ class PolicyFirewall:
             raise ValueError(f"Proposal must be ACCEPTED. Current: {proposal.consensus_status}")
 
         if proposal.target_protocol not in ALLOWED_PROTOCOLS:
-            raise ValueError(f"Constraint Violation: Target protocol {proposal.target_protocol} not allowed.")
+            raise ValueError(
+                f"Constraint Violation: Target protocol must be one of {ALLOWED_PROTOCOLS}. "
+                f"Got: {proposal.target_protocol}"
+            )
 
         if proposal.asset_in not in WHITELISTED_ASSETS:
             raise ValueError(f"Constraint Violation: Asset In '{proposal.asset_in}' is not whitelisted.")
-        
+
         if proposal.asset_out and proposal.asset_out not in WHITELISTED_ASSETS:
-             raise ValueError(f"Constraint Violation: Asset Out '{proposal.asset_out}' is not whitelisted.")
+            raise ValueError(f"Constraint Violation: Asset Out '{proposal.asset_out}' is not whitelisted.")
 
         usd_value = self._get_usd_value(proposal.asset_in, proposal.amount_in_units)
         if usd_value > MAX_TRANSACTION_VALUE_USD:
-            raise ValueError(f"Constraint Violation: Transaction value (${usd_value:,.2f}) exceeds max (${MAX_TRANSACTION_VALUE_USD:,.2f}).")
+            raise ValueError(
+                f"Constraint Violation: Transaction value (${usd_value:,.2f}) "
+                f"exceeds maximum allowed (${MAX_TRANSACTION_VALUE_USD:,.2f})."
+            )
 
         # Hook validation
         if proposal.v4_hook_required and proposal.v4_hook_required not in ALLOWED_HOOKS:

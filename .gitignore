@@ -3,6 +3,7 @@ venv/
 .env
 __pycache__/
 *.pyc
+*.pyo
 0g_storage/
 chroma_db/
 test_*/
@@ -10,6 +11,12 @@ test_0g_*/
 test_chroma_*/
 test_chroma_db/
 axl_network.db
+state/
 .vscode/
 .pytest_cache/
 .claude/
+# Foundry
+out/
+cache/
+artifacts/
+broadcast/

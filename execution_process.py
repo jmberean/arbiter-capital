@@ -106,8 +106,6 @@ def run_execution_daemon():
                             del pending_proposals[prop_id]
 
             time.sleep(2)
-                
-            time.sleep(2)
             
         except KeyboardInterrupt:
             logger.info("Execution Process shutting down.")

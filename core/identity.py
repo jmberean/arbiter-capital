@@ -4,9 +4,12 @@ from eth_utils import to_checksum_address
 
 def _key(env: str) -> bytes | None:
     v = os.getenv(env)
-    if not v or v.startswith("0xabc") or v == "0x" + "0"*64:
+    if not v or v.startswith("0xabc") or v == "0x" + "0" * 64:
         return None
-    return bytes.fromhex(v[2:] if v.startswith("0x") else v)
+    try:
+        return bytes.fromhex(v[2:] if v.startswith("0x") else v)
+    except ValueError:
+        return None
 
 QUANT_KEY      = _key("QUANT_PRIVATE_KEY")
 PATRIARCH_KEY  = _key("PATRIARCH_PRIVATE_KEY")

@@ -1,108 +1,166 @@
 import os
+import sys
 import json
 import logging
 import hashlib
-from typing import List, Dict
+import argparse
+from typing import Optional
 from web3 import Web3
 import chromadb
 from dotenv import load_dotenv
+from eth_utils import keccak
 
-# Configure logging
+load_dotenv()
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("AuditVerifier")
 
+
 class AuditVerifier:
     def __init__(self):
-        load_dotenv()
-        
-        # 0G L1 Connection
         self.zero_g_rpc = os.getenv("ZERO_G_RPC_URL", "https://evmrpc-testnet.0g.ai")
         self.w3 = Web3(Web3.HTTPProvider(self.zero_g_rpc))
-        
-        # ChromaDB setup
-        db_path = os.path.join(os.path.dirname(__file__), "chroma_db")
-        self.chroma_client = chromadb.PersistentClient(path=db_path)
-        self.collection = self.chroma_client.get_collection("decision_receipts")
-        
-        # Local 0G backup path
         self.storage_path = os.path.join(os.path.dirname(__file__), "0g_storage")
 
-    def verify_decision(self, doc_id: str, metadata: Dict) -> bool:
-        """Verifies a single decision against the 0G testnet or local storage."""
+        db_path = os.path.join(os.path.dirname(__file__), "chroma_db")
+        self.chroma_client = chromadb.PersistentClient(path=db_path)
+        try:
+            self.collection = self.chroma_client.get_collection("decision_receipts")
+        except Exception:
+            self.collection = None
+
+    # ------------------------------------------------------------------
+    # Chain walk (primary verification path)
+    # ------------------------------------------------------------------
+
+    def walk_chain(self, head_hash: Optional[str] = None) -> bool:
+        from memory.audit_chain import AuditChainHead
+        head = head_hash or AuditChainHead().head
+        if not head:
+            print("No audit chain head found. Run some proposals first.")
+            return False
+
+        cur, count = head, 0
+        while cur:
+            try:
+                receipt = self._fetch_receipt(cur)
+            except Exception as e:
+                print(f"CHAIN BROKEN at {cur}: {e}")
+                return False
+
+            if not self._integrity_ok(receipt):
+                print(f"INTEGRITY FAIL at receipt {cur}")
+                return False
+
+            rtype = receipt.get("receipt_type", "?")
+            rid = receipt.get("receipt_id", cur[:12])
+            if rtype == "AttackRejection":
+                payload = receipt.get("payload", {})
+                print(f"  ⚠ ATTACK_REJECTED [{payload.get('attack_kind')}] — "
+                      f"defended by {payload.get('detected_by')}")
+            else:
+                print(f"  ✓ [{rtype}] receipt_id={rid}")
+
+            cur = receipt.get("prev_0g_tx_hash")
+            count += 1
+
+        print(f"\nCHAIN VERIFIED — {count} receipts walked.")
+        return True
+
+    def _fetch_receipt(self, tx_hash: str) -> dict:
+        local_path = os.path.join(self.storage_path, f"{tx_hash}.json")
+        if os.path.exists(local_path):
+            with open(local_path) as f:
+                return json.load(f)
+        if tx_hash.startswith("0x"):
+            try:
+                tx = self.w3.eth.get_transaction(tx_hash)
+                data_text = self.w3.to_text(tx["input"])
+                return json.loads(data_text)
+            except Exception as e:
+                raise FileNotFoundError(f"Not found on-chain: {e}")
+        raise FileNotFoundError(f"Receipt {tx_hash} not found locally or on-chain.")
+
+    def _integrity_ok(self, receipt: dict) -> bool:
+        stored_hash = receipt.get("receipt_hash")
+        if not stored_hash:
+            return True  # pre-v5 receipt without hash — allow
+        body = {k: v for k, v in receipt.items() if k != "receipt_hash"}
+        canonical = json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+        expected = "0x" + keccak(canonical).hex()
+        if expected != stored_hash:
+            logger.error(f"Hash mismatch: expected {expected}, stored {stored_hash}")
+            return False
+        return True
+
+    # ------------------------------------------------------------------
+    # Legacy full audit (ChromaDB-based)
+    # ------------------------------------------------------------------
+
+    def verify_decision(self, doc_id: str, metadata: dict) -> bool:
         zero_g_hash = metadata.get("0g_hash")
         proposal_id = metadata.get("proposal_id")
-        
         logger.info(f"Verifying Proposal {proposal_id} (Hash: {zero_g_hash[:12]}...)")
-        
-        # 1. Check if it's a real 0G Transaction Hash (0x...)
+
         if zero_g_hash.startswith("0x"):
             try:
                 tx = self.w3.eth.get_transaction(zero_g_hash)
                 if not tx:
                     logger.error(f"❌ FAILED: Transaction {zero_g_hash} not found on 0G Testnet.")
                     return False
-                
-                # Decode the data (receipt) from the transaction input
                 input_data = tx.get("input", "")
                 if not input_data:
                     logger.error(f"❌ FAILED: Transaction {zero_g_hash} has no data.")
                     return False
-                
-                # Convert hex to string
-                try:
-                    # Web3.to_text handles the 0x prefix
-                    receipt_str = self.w3.to_text(input_data)
-                    receipt = json.loads(receipt_str)
-                    logger.info(f"✅ SUCCESS: Verified on 0G Testnet. Proposal: {receipt['proposal']['proposal_id']}")
-                    return True
-                except Exception as e:
-                    logger.error(f"❌ FAILED: Could not decode 0G transaction data: {e}")
-                    return False
-                    
+                receipt_str = self.w3.to_text(input_data)
+                receipt = json.loads(receipt_str)
+                logger.info(f"✅ SUCCESS: Verified on 0G Testnet. Proposal: {receipt['proposal']['proposal_id']}")
+                return True
             except Exception as e:
-                # If RPC fails or tx not found, check local fallback
                 logger.warning(f"Could not verify on-chain ({e}). Checking local fallback...")
-        
-        # 2. Local Fallback / Mock Verification
+
         file_path = os.path.join(self.storage_path, f"{zero_g_hash}.json")
         if os.path.exists(file_path):
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 content = f.read()
-                # Verify SHA256 integrity
-                calculated_hash = hashlib.sha256(content.encode()).hexdigest()
-                
-                # If it was a tx_hash, the filename might not match the sha256
-                # But for mock hashes, they are the sha256.
-                if not zero_g_hash.startswith("0x") and calculated_hash != zero_g_hash:
-                    logger.error(f"❌ FAILED: Local integrity check failed for {zero_g_hash}")
-                    return False
-                    
-                logger.info(f"✅ SUCCESS: Verified locally. Hash: {calculated_hash[:12]}...")
-                return True
-        else:
-            logger.error(f"❌ FAILED: Decision receipt {zero_g_hash} not found in 0G storage.")
-            return False
+            calculated_hash = hashlib.sha256(content.encode()).hexdigest()
+            if not zero_g_hash.startswith("0x") and calculated_hash != zero_g_hash:
+                logger.error(f"❌ FAILED: Local integrity check failed for {zero_g_hash}")
+                return False
+            logger.info(f"✅ SUCCESS: Verified locally. Hash: {calculated_hash[:12]}...")
+            return True
 
-    def run_full_audit(self):
-        """Iterates through all indexed decisions and verifies them."""
+        logger.error(f"❌ FAILED: Decision receipt {zero_g_hash} not found.")
+        return False
+
+    def run_full_audit(self) -> None:
         logger.info("Starting Full Audit Verification...")
-        
-        # Get all documents from ChromaDB
+        if not self.collection:
+            logger.info("No ChromaDB collection found.")
+            return
         results = self.collection.get()
         ids = results.get("ids", [])
         metadatas = results.get("metadatas", [])
-        
         if not ids:
             logger.info("No decisions found in memory to verify.")
             return
-            
-        success_count = 0
-        for i in range(len(ids)):
-            if self.verify_decision(ids[i], metadatas[i]):
-                success_count += 1
-                
+        success_count = sum(
+            1 for i in range(len(ids)) if self.verify_decision(ids[i], metadatas[i])
+        )
         logger.info(f"Audit Complete. Verified {success_count}/{len(ids)} decisions successfully.")
 
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Arbiter Capital audit verifier")
+    parser.add_argument("--walk-from-head", action="store_true",
+                        help="Walk the hash-chained 0G audit log from the current head.")
+    parser.add_argument("--head", type=str, default=None,
+                        help="Start walk from a specific tx hash instead of the stored head.")
+    args = parser.parse_args()
+
     verifier = AuditVerifier()
-    verifier.run_full_audit()
+    if args.walk_from_head or args.head:
+        ok = verifier.walk_chain(head_hash=args.head)
+        sys.exit(0 if ok else 1)
+    else:
+        verifier.run_full_audit()

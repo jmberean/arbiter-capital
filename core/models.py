@@ -45,7 +45,7 @@ class Proposal(BaseModel):
     # Quantitative attestation
     projected_apy: Optional[float] = None # Legacy
     projected_apy_bps: Optional[int] = None
-    risk_score_evaluation: Optional[float] = None # Legacy
+    risk_score_evaluation: Optional[float] = Field(None, ge=0.0, le=10.0)  # Legacy, 0–10 scale
     risk_score_bps: Optional[int] = None
     quant_analysis_hash: Optional[str] = None
 
@@ -89,6 +89,18 @@ class ConsensusMessage(BaseModel):
     signature: str
     safe_tx_hash: str
     timestamp: float
+
+class SimulationResult(BaseModel):
+    request_id: str
+    proposal_id: str
+    success: bool
+    gas_used: int
+    return_data: str
+    revert_reason: Optional[str] = None
+    fork_block: int
+    simulator_signature: str
+    timestamp: float
+
 
 class LLMContext(BaseModel):
     schema_version: int = 1
