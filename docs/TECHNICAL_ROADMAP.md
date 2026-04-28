@@ -71,7 +71,7 @@ This roadmap is a **drop-in implementation playbook**. v5.0 layers five elite fe
 
 **Objective:** Stop the bleeding. Eliminate every silent failure surfaced by the audit. Establish `state/` directory.
 
-### Step 0.1 — Fix `eth_account` signing API
+### [x] Step 0.1 — Fix `eth_account` signing API
 **File:** `execution/safe_treasury.py`
 
 ```python
@@ -88,14 +88,14 @@ def sign_hash(self, safe_tx_hash: str, key: bytes | None = None) -> str:
 
 **Acceptance:** `python -c "from execution.safe_treasury import SafeTreasury; t=SafeTreasury(); h=t.get_safe_tx_hash('0x'+'00'*20, b'test', 0); print(t.sign_hash(h))"` prints a 132-char hex string.
 
-### Step 0.2 — Fix web3 7.15 attribute
+### [x] Step 0.2 — Fix web3 7.15 attribute
 **File:** `memory/memory_manager.py`
 
 `signed_tx.rawTransaction` → `signed_tx.raw_transaction`.
 
 **Acceptance:** With valid `ZERO_G_RPC_URL` + funded `ZERO_G_PRIVATE_KEY`, `MemoryManager.save_decision(...)` returns a real 64-hex tx hash visible on the 0G explorer.
 
-### Step 0.3 — Fix test suite collection
+### [x] Step 0.3 — Fix test suite collection
 **Files:** `tests/test_execution.py`, `tests/__init__.py`
 
 * Remove `sys.modules` stubbing of `eth_account` (it cascades into `web3.types`).
@@ -104,7 +104,7 @@ def sign_hash(self, safe_tx_hash: str, key: bytes | None = None) -> str:
 
 **Acceptance:** `pytest tests/ -x` passes with ≥9 tests collected and 0 errors.
 
-### Step 0.4 — Live Gensyn AXL deployment ✱ compliance-6 (DAY 1 PRIORITY)
+### [ ] Step 0.4 — Live Gensyn AXL deployment ✱ compliance-6 (DAY 1 PRIORITY)
 **Why this is Day 1:** Gensyn's bounty has a hard requirement — "no centralized message brokers." Our current SQLite-backed `MockAXLNode` is a centralized broker. If the demo recording uses it, **we are disqualified from the Gensyn bounty by definition.** Live AXL must be running before any other elite-feature work, because every subsequent acceptance criterion runs against it.
 
 **Files:** `scripts/setup_axl.sh` (new), `core/network.py` (modify).
@@ -181,7 +181,7 @@ def _assert_demo_transport(self) -> None:
 * End-to-end run with all 5 daemons connected to their respective AXL nodes successfully exchanges a `MARKET_DATA → PROPOSALS → CONSENSUS_SIGNATURES → EXECUTION_SUCCESS` flow with 5 distinct senders visible on `monitor_network.py`.
 * `monitor_network.py`'s "distinct senders in last 60s" counter shows ≥4 (5 once Watchdog runs).
 
-### Step 0.5 — State directory + cursor persistence
+### [x] Step 0.5 — State directory + cursor persistence
 **New files:** `state/.gitkeep`, `core/persistence.py`
 
 ```python
@@ -218,7 +218,7 @@ Wire into all three daemons (`last_market_id = cursors.get("MARKET_DATA")` etc.)
 
 **Objective:** Real EIP-712 typed-data hashing, identity registry, Quant signing both `bundle_hash` and `safe_tx_hash`, and **first 0G writes of `LLMContext` artifacts** (early start on the 0G elite feature).
 
-### Step 1.1 — Crypto utilities
+### [x] Step 1.1 — Crypto utilities
 **New file:** `core/crypto.py`
 
 ```python
@@ -266,7 +266,7 @@ def recover_signer(digest: bytes, sig_hex: str) -> str:
     return to_checksum_address(Account._recover_hash(digest, signature=sig))
 ```
 
-### Step 1.2 — Identity registry
+### [x] Step 1.2 — Identity registry
 **New file:** `core/identity.py`
 
 ```python
@@ -307,7 +307,7 @@ def is_attestor(addr: str) -> bool:      return to_checksum_address(addr) in ATT
 
 Update `.env.example` with `QUANT_PRIVATE_KEY`, `PATRIARCH_PRIVATE_KEY`, `EXECUTOR_PRIVATE_KEY`, `KEEPERHUB_ATTESTOR_KEY`.
 
-### Step 1.3 — Extend Proposal model
+### [x] Step 1.3 — Extend Proposal model
 **File:** `core/models.py`
 
 Add fields per `SYSTEM_DESIGN §4.1`: `parent_proposal_id`, `iteration`, `amount_in_units`, decimals, `min_amount_out_units`, `deadline_unix`, `*_bps` ints, `quant_analysis_hash`, `market_snapshot_hash`, `llm_context_hash`, `llm_context_0g_tx`, `proposal_hash`, `safe_tx_hash`, `quant_signature`, `patriarch_signature`, `safe_nonce`, `chain_id`. Keep legacy fields for back-compat with migration validator.
@@ -328,7 +328,7 @@ def _populate(self):
     return self
 ```
 
-### Step 1.4 — LLMContext model + capture helper (v5 elite-2 starts here)
+### [x] Step 1.4 — LLMContext model + capture helper (v5 elite-2 starts here)
 **File:** `core/models.py`
 
 ```python
@@ -394,7 +394,7 @@ def capture_and_persist(*, agent, proposal_id, iteration, model_id, temperature,
 
 `MemoryManager.write_artifact(kind, payload)` is a generic write that returns the 0G tx hash. Wire it into the existing `_write_to_0g` infrastructure.
 
-### Step 1.5 — Quant signs at end of LangGraph
+### [x] Step 1.5 — Quant signs at end of LangGraph
 **File:** `agents/quant.py`
 
 Add nodes: `capture_llm_context` (after `draft_proposal_llm`) and `sign_proposal` (after `self_audit`). The `draft_proposal_llm` node now records `(system_prompt, messages, response_raw, parsed_obj)` into `state` so `capture_llm_context` can persist them.
@@ -417,7 +417,7 @@ def sign_proposal(state):
     return {"current_proposal": p}
 ```
 
-### Step 1.6 — SafeTreasury upgrades
+### [x] Step 1.6 — SafeTreasury upgrades
 **File:** `execution/safe_treasury.py`
 
 Add `target_address()`, `read_nonce()`, EIP-712-aware `get_safe_tx_hash(to, data, value, nonce)`. Mock-mode hash now includes `nonce` and `chain_id` to avoid replay collisions. Fix `safe.build_multisig_tx` to pass `safe_nonce=nonce`.
@@ -433,7 +433,7 @@ Add `target_address()`, `read_nonce()`, EIP-712-aware `get_safe_tx_hash(to, data
 
 **Objective:** Replace `len(sigs) >= 1` with real cryptographic threshold verification.
 
-### Step 2.1 — Patriarch verifies, recomputes, then signs
+### [x] Step 2.1 — Patriarch verifies, recomputes, then signs
 **File:** `patriarch_process.py`
 
 ```python
@@ -460,7 +460,7 @@ reviewed.patriarch_signature = sig_bundle_p + sig_safe_p[2:]
 
 `publish_attack_rejection(p, kind, reason)` is a new helper that publishes `ATTACK_REJECTED` to AXL **and** writes an `AttackRejection` to 0G. (Used for both Watchdog rejections in Day 8 and any natural rejection here.)
 
-### Step 2.2 — Dedupe ledger
+### [x] Step 2.2 — Dedupe ledger
 **New file:** `core/dedupe.py`
 
 ```python
@@ -487,7 +487,7 @@ class DedupeLedger:
                       (safe_address, safe_nonce, proposal_id, tx_hash, status, time.time()))
 ```
 
-### Step 2.3 — Execution Node — real verification
+### [x] Step 2.3 — Execution Node — real verification
 **File:** `execution_process.py`
 
 ```python
@@ -518,7 +518,7 @@ tx_hash = treasury.execute_with_signatures(proposal, calldata, sigs_blob)
 dedupe.mark(treasury.safe_address, proposal.safe_nonce, proposal.proposal_id, tx_hash)
 ```
 
-### Step 2.4 — Remove duplicate `time.sleep(2)` at `execution_process.py:94-96`.
+### [x] Step 2.4 — Remove duplicate `time.sleep(2)` at `execution_process.py:94-96`.
 
 **Acceptance:**
 * End-to-end run dispatches only when both signatures recover to `SAFE_OWNERS`.
@@ -531,7 +531,7 @@ dedupe.mark(treasury.safe_address, proposal.safe_nonce, proposal.proposal_id, tx
 
 **Objective:** Eliminate LLM ability to fabricate quantitative fields.
 
-### Step 3.1 — Hash the Quant analysis
+### [x] Step 3.1 — Hash the Quant analysis
 **File:** `agents/quant.py`
 
 ```python
@@ -551,7 +551,7 @@ def quantitative_ingestion(state):
 
 The Quant publishes the original `MarketSnapshot` to AXL topic `MARKET_SNAPSHOTS` keyed by hash; Patriarch fetches by hash before recomputing.
 
-### Step 3.2 — Self-audit node
+### [x] Step 3.2 — Self-audit node
 ```python
 def self_audit(state):
     p, a = state["current_proposal"], state["quant_analysis"]
@@ -562,7 +562,7 @@ def self_audit(state):
     return {}
 ```
 
-### Step 3.3 — Patriarch independently re-runs
+### [x] Step 3.3 — Patriarch independently re-runs
 **File:** `agents/patriarch.py`
 
 ```python
@@ -578,7 +578,7 @@ def deterministic_recheck(state):
     return {"patriarch_recompute": a}
 ```
 
-### Step 3.4 — Constrain Patriarch LLM
+### [x] Step 3.4 — Constrain Patriarch LLM
 ```python
 class ProposalEvaluation(BaseModel):
     proposal_id: str
@@ -598,7 +598,7 @@ reviewed.consensus_status = ConsensusStatus(ev.consensus_status)
 
 The Patriarch's LLM call is also wrapped in `capture_and_persist(...)` so its `LLMContext` lands on 0G.
 
-### Step 3.5 — Decimals discipline everywhere
+### [x] Step 3.5 — Decimals discipline everywhere
 **File:** `execution/uniswap_v4/router.py`
 
 Replace every `int(proposal.amount_in * 1e18)` with `int(proposal.amount_in_units)`. Resolve placeholder addresses (`stETH`, etc.) to real Sepolia addresses pinned in `.env`.
@@ -614,7 +614,7 @@ Replace every `int(proposal.amount_in * 1e18)` with `int(proposal.amount_in_unit
 
 **Objective:** Real Universal Router calldata. **Deploy our own v4 hook on Sepolia.**
 
-### Step 4.1 — Pin all addresses Day-5 morning
+### [ ] Step 4.1 — Pin all addresses Day-5 morning
 Resolve from official Uniswap v4 deployment registry:
 * `UNIVERSAL_ROUTER_ADDRESS`
 * `V4_POOL_MANAGER` (already known: `0x000000000004444c5dc75cb358380d2e3de08a90`)
@@ -623,7 +623,7 @@ Resolve from official Uniswap v4 deployment registry:
 * `V4_HOOK_DYNAMIC_FEE` (deployed reference hook)
 * Sepolia token addresses (WETH, USDC, stETH, WBTC, PT-USDC)
 
-### Step 4.2 — UR calldata builder
+### [x] Step 4.2 — UR calldata builder
 **New file:** `execution/uniswap_v4/universal_router.py`
 
 ```python
@@ -652,15 +652,15 @@ def build_ur_execute_calldata(commands: bytes, inputs: list[bytes], deadline: in
     return UR_EXEC_SELECTOR + body
 ```
 
-### Step 4.3 — Refactor `UniswapV4Router.generate_calldata`
+### [x] Step 4.3 — Refactor `UniswapV4Router.generate_calldata`
 Build `PoolKey` (canonical-ordered), derive `zero_for_one`, set `amount_specified = -int(amount_in_units)` for exact-input, set `sqrt_price_limit` from slippage, build `V4_SWAP` input, prepend optional `PERMIT2_PERMIT`, return `build_ur_execute_calldata(...)`.
 
-### Step 4.4 — Permit2 helper
+### [x] Step 4.4 — Permit2 helper
 **New file:** `execution/uniswap_v4/permit2.py`
 
 `ensure_permit2_approval(asset, amount, spender)` reads current allowance via `Permit2.allowance(safe, token, spender)`; if insufficient, builds and prepends a `PERMIT2_PERMIT` command with bounded amount + 24h expiry.
 
-### Step 4.5 — **Deploy ArbiterThrottleHook (elite-1)**
+### [ ] Step 4.5 — **Deploy ArbiterThrottleHook (elite-1)**
 **New files:**
 * `hooks/ArbiterThrottleHook.sol` (Solidity per `SYSTEM_DESIGN §10.3`)
 * `hooks/HookMiner.s.sol` (Foundry script — mine CREATE2 salt yielding correct permission bits)
@@ -710,10 +710,10 @@ def validate_hook_address(hook_addr: str, expected_flags: int) -> bool:
 
 **Objective:** Real on-chain execution against a 2-of-2 Sepolia Safe. **KeeperHub becomes a consensus participant via the Sim Oracle MCP tool.**
 
-### Step 5.1 — Deploy 2-of-2 Safe on Sepolia
+### [ ] Step 5.1 — Deploy 2-of-2 Safe on Sepolia
 Via `app.safe.global?chain=sep`. Owners: `[QUANT_ADDR, PATRIARCH_ADDR]`. Threshold: 2. Fund: 0.1 WETH, 100 USDC, 0.1 stETH, 0.01 WBTC. Pin `SAFE_ADDRESS` in `.env`.
 
-### Step 5.2 — Enable KeeperHub Module
+### [ ] Step 5.2 — Enable KeeperHub Module
 **New file:** `scripts/enable_keeperhub_module.py`
 
 ```python
@@ -723,7 +723,7 @@ Via `app.safe.global?chain=sep`. Owners: `[QUANT_ADDR, PATRIARCH_ADDR]`. Thresho
 
 Run once before Day 6 e2e test.
 
-### Step 5.3 — KeeperHub Sim Oracle (the elite move)
+### [ ] Step 5.3 — KeeperHub Sim Oracle (the elite move)
 **File:** `execution/keeper_hub.py`
 
 The KeeperHub MCP server now exposes:
@@ -777,7 +777,7 @@ def consult_sim_oracle(state):
 
 The graph order becomes: `deterministic_recheck → evaluate_llm → consult_sim_oracle → finalize`. The sim result is included in the `NegotiationTranscript` written to 0G.
 
-### Step 5.4 — End-to-end live tx
+### [ ] Step 5.4 — End-to-end live tx
 1. `python market_injector.py flash_crash_eth`.
 2. Quant publishes signed Proposal + LLMContext on 0G.
 3. Patriarch verifies, recomputes, evaluates, calls Sim Oracle, signs.
@@ -790,7 +790,7 @@ The graph order becomes: `deterministic_recheck → evaluate_llm → consult_sim
 * `verify_audit.py` confirms the on-chain receipt + chain link + sim oracle signature.
 * Re-injecting same `safe_nonce` is rejected by dedupe + watchdog-style `ATTACK_REJECTED`.
 
-### Step 5.5 — `langchain_keeperhub.py` bridge ✱ compliance-7 (KeeperHub Focus Area 2)
+### [x] Step 5.5 — `langchain_keeperhub.py` bridge ✱ compliance-7 (KeeperHub Focus Area 2)
 
 KeeperHub's bounty has two focus areas. Step 5.3 hits **Focus Area 1** ("real problem via MCP"). This step hits **Focus Area 2** ("bridges/plugins for agent frameworks like LangChain"). Cost: ~2 hours; reward: doubled bounty surface and a public artifact other LangGraph builders can reuse.
 
@@ -907,7 +907,7 @@ Add `tests/test_langchain_keeperhub.py` with a stubbed MCP server fixture; the t
 
 **Objective:** Make the audit log tamper-evident. Make 0G the **canonical AI memory substrate**. Mint SBTs.
 
-### Step 6.1 — Audit chain head pointer
+### [x] Step 6.1 — Audit chain head pointer
 **New file:** `memory/audit_chain.py`
 
 ```python
@@ -925,7 +925,7 @@ class AuditChainHead:
         HEAD.write_text(json.dumps(self._c))
 ```
 
-### Step 6.2 — Receipt taxonomy
+### [x] Step 6.2 — Receipt taxonomy
 **File:** `core/models.py`
 
 ```python
@@ -940,7 +940,7 @@ class BaseReceipt(BaseModel):
     payload: dict
 ```
 
-### Step 6.3 — MemoryManager writes the chain
+### [x] Step 6.3 — MemoryManager writes the chain
 **File:** `memory/memory_manager.py`
 
 ```python
@@ -963,7 +963,7 @@ def write_artifact(self, kind: str, payload: dict) -> str:
     return tx_hash
 ```
 
-### Step 6.4 — `replay_decision.py` (the elite-2 demo asset)
+### [x] Step 6.4 — `replay_decision.py` (the elite-2 demo asset)
 **New file:** `scripts/replay_decision.py`
 
 ```python
@@ -1014,7 +1014,7 @@ def replay(tx_hash: str):
 
 > Note on determinism: at `temperature=0.0` with a seed, OpenAI is *largely* deterministic but not byte-stable. We solve this by also storing `response_parsed_hash` over the *parsed* structured output — schema-bounded objects are far more reproducible than raw strings. The script reports both.
 
-### Step 6.5 — Verifier walks the chain
+### [x] Step 6.5 — Verifier walks the chain
 **File:** `verify_audit.py`
 
 ```python
@@ -1034,10 +1034,10 @@ def walk_chain(self, head_hash: str | None = None) -> bool:
     return True
 ```
 
-### Step 6.6 — Reorg awareness
+### [ ] Step 6.6 — Reorg awareness
 `MIN_CONFIRMATIONS = 3`. Verifier polls until receipt has ≥3 confirmations before declaring `CONFIRMED`.
 
-### Step 6.7 — **ArbiterReceipt SBT (elite-5a)**
+### [x] Step 6.7 — **ArbiterReceipt SBT (elite-5a)**
 **New file:** `contracts/ArbiterReceipt.sol` (per `SYSTEM_DESIGN §13.1`).
 
 **Foundry deployment:**
@@ -1066,13 +1066,13 @@ mint_tx = nft.functions.mintReceipt(receipt_hash_bytes32, zero_g_uri).build_tran
 
 **Objective:** Survive the chaos matrix. **Demonstrate adversarial resilience on camera via the Byzantine Watchdog.**
 
-### Step 7.1 — Heartbeats + reconnection backoff
+### [ ] Step 7.1 — Heartbeats + reconnection backoff
 * `core/retry.py` — exponential backoff with jitter.
 * `Heartbeat` published every 5s by every daemon.
 * Patriarch silence > 30s ⇒ Quant marks proposal `EXPIRED`.
 * `state/pending_0g.jsonl` — retry queue for 0G writes during RPC outage.
 
-### Step 7.2 — **Byzantine Watchdog (elite-4)**
+### [x] Step 7.2 — **Byzantine Watchdog (elite-4)**
 **New file:** `byzantine_watchdog.py`
 
 ```python
@@ -1151,7 +1151,7 @@ def attack_A6_wrong_domain(real_proposal: Proposal):
 
 **Forensic 0G writes:** every defender (Patriarch, Execution Node) calls `publish_attack_rejection(attack_id, kind, evidence)` which writes an `AttackRejection` receipt to 0G **and** publishes to AXL.
 
-### Step 7.3 — Chaos test scripts
+### [ ] Step 7.3 — Chaos test scripts
 **New directory:** `scripts/chaos/`
 
 | Script | Asserts |
@@ -1171,7 +1171,7 @@ def attack_A6_wrong_domain(real_proposal: Proposal):
 
 **Objective:** Lock the demo recording flow. Audience-verifiable.
 
-### Step 8.1 — Multi-pane "God View" monitor
+### [ ] Step 8.1 — Multi-pane "God View" monitor
 **File:** `monitor/monitor_network.py`
 
 `rich.layout.Layout` with four columns:
@@ -1180,7 +1180,7 @@ def attack_A6_wrong_domain(real_proposal: Proposal):
 3. **Audit Chain Tail**: last 5 0G receipts with `tx_hash`, `prev_0g_tx_hash`, signature recovery results.
 4. **Watchdog Evidence**: red-flash list of `ATTACK_REJECTED` events with kind + defender.
 
-### Step 8.2 — Public verifier page (elite-5b)
+### [ ] Step 8.2 — Public verifier page (elite-5b)
 **New directory:** `monitor/public_verifier/`
 
 Static site (Next.js or plain HTML+JS) deployed to Vercel:
@@ -1193,7 +1193,7 @@ The Monitor pane #2 renders a QR linking to this page.
 
 **Recording-day rehearsal:** Day 9 dress rehearsal includes recording someone scanning the QR with their phone and seeing the same `CHAIN VERIFIED` state.
 
-### Step 8.3 — Demo orchestration script
+### [ ] Step 8.3 — Demo orchestration script
 **New file:** `scripts/demo_run.py`
 
 ```python
@@ -1221,7 +1221,7 @@ STEPS = [
 
 The script blocks at each step until either the assertion fires or the timeout expires. Timeout aborts with a clear error.
 
-### Step 8.4 — `docs/KEEPERHUB_FEEDBACK.md` ✱ compliance-8 (Builder Feedback Bounty $250)
+### [ ] Step 8.4 — `docs/KEEPERHUB_FEEDBACK.md` ✱ compliance-8 (Builder Feedback Bounty $250)
 
 KeeperHub's Builder Feedback bounty pays $250 for "specific, actionable feedback on UX friction, reproducible bugs, or documentation gaps encountered while using KeeperHub during the event." Up to two teams win. We've used KeeperHub all week — by Day 9 we'll have accumulated friction points. **This is the cheapest $250 in the prize pool**; do not skip it.
 
@@ -1271,7 +1271,7 @@ Template — fill in actual entries from our experience:
 
 **Acceptance:** File exists, ≥3 friction-point H2 sections, each has Date / Repro / Expected / Actual fields. CI gate `scripts/check_bounty_compliance.py` enforces this.
 
-### Step 8.5 — Dress rehearsal
+### [ ] Step 8.5 — Dress rehearsal
 Run `scripts/demo_run.py` end-to-end three times in a row with fresh `state/`. All three must pass. Record once with OBS; this is the insurance recording.
 
 **Acceptance:**
@@ -1285,7 +1285,7 @@ Run `scripts/demo_run.py` end-to-end three times in a row with fresh `state/`. A
 
 ## 11. Day 10 — Submission
 
-### Step 9.0 — `scripts/check_bounty_compliance.py` (auto-enforced gate)
+### [ ] Step 9.0 — `scripts/check_bounty_compliance.py` (auto-enforced gate)
 
 **New file** — runs before submission. Refuses to ship if any bounty hard requirement (per `SYSTEM_DESIGN §2.5`) fails.
 
@@ -1363,7 +1363,7 @@ sys.exit(1 if FAIL else 0)
 
 Run: `python scripts/check_bounty_compliance.py`. Day 10 cannot proceed unless this prints all green.
 
-### Step 9.1 — Final documentation
+### [ ] Step 9.1 — Final documentation
 * `README.md` — replace MVP 6 claims with v5.1 reality. Add architecture diagram (export from `SYSTEM_DESIGN §3.1`). Link to public verifier.
 * `GEMINI.md` — update.
 * `docs/SECURITY.md` — copy threat model, add disclaimers.
@@ -1377,10 +1377,10 @@ Run: `python scripts/check_bounty_compliance.py`. Day 10 cannot proceed unless t
   * **KeeperHub Builder Feedback ($500):** `docs/KEEPERHUB_FEEDBACK.md` URL, submission timestamp.
   * **Grand Prize / "AI agents that live onchain":** narrative summary tying all of the above together — 4 onchain-bound personas, signed agent-to-agent negotiation, autonomous Safe execution, reproducible AI memory.
 
-### Step 9.2 — Final smoke test
+### [ ] Step 9.2 — Final smoke test
 `scripts/demo_run.py` three times in a row. All must pass. Insurance recording archived.
 
-### Step 9.3 — Recording & submission
+### [ ] Step 9.3 — Recording & submission
 * Record 3 minutes via OBS following the storyboard in `SYSTEM_DESIGN §17`.
 * Upload to ETHGlobal portal.
 * Submit:

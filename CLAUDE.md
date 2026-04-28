@@ -8,7 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Iterative commits:** Break tasks into small logical units and commit frequently with descriptive messages.
 - **Living documentation:** Keep `README.md`, `GEMINI.md`, `CLAUDE.md`, and `docs/` in sync with implementation — docs must never lag behind code.
 - **Keep `.gitignore` and `requirements.txt` updated** whenever new files, dirs, or dependencies are introduced.
-- **Use `uv` for all package installs** — never `pip install` directly. Add new deps with `uv pip install <pkg>` and pin them in `requirements.txt`.
+- **Always use the venv:** All Python commands must run inside `.venv`. Activate with `.venv\Scripts\activate` (Windows) before any `python` or `pytest` call. Install packages with `uv pip install <pkg>` *while the venv is active* — never `pip install` directly.
+- **Roadmap checkbox discipline:** After implementing and testing a step, immediately update `docs/TECHNICAL_ROADMAP.md` — change `### [ ] Step X.Y` to `### [x] Step X.Y`. Only mark done after the relevant test passes or the compliance gate confirms it. Do not batch-update checkboxes.
 
 ## Project Context
 
@@ -16,11 +17,13 @@ ETHGlobal Open Agents hackathon submission (deadline: 2026-05-06). Targeting $50
 
 ## Commands
 
+All commands assume the venv is active. Always run `.venv\Scripts\activate` first.
+
 ```bash
-# Activate virtualenv (Windows)
+# Activate virtualenv (Windows) — required before any python/pytest/uv command
 .venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies (with venv active)
 uv pip install -r requirements.txt
 
 # Run all tests
@@ -88,20 +91,11 @@ byzantine_watchdog.py → Publishes adversarial PROPOSALS (demo only)
 Pure Python, no LLM. Checks: protocol whitelist, asset whitelist, max USD value ($50k), hook permission bits (bottom 14 bits of hook address must match expected flags). Proposal must be `ACCEPTED` before it reaches the firewall.
 
 ### Known bugs to be aware of
-- `patriarch_process.py` line 61 passes `market_data={}` to `patriarch_app` — `deterministic_recheck` always fails when real market data is needed.
-- `execution_process.py` has duplicate `time.sleep(2)` at lines 108 and 110.
-- `quant_process.py` instantiates `MockAXLNode(node_id="Quant_Node_A")` without `url_env` — won't read `AXL_NODE_URL_QUANT`.
 - `agents/quant.py::sign_proposal` hardcodes `p.safe_nonce = 0`.
-- `execution/uniswap_v4/router.py` uses placeholder selector `0x12345678` and `amount_in * 1e18` instead of `int(proposal.amount_in_units)`.
 
 ### What is missing (not yet created)
-- `memory/audit_chain.py` — hash-chained audit log head (needed for 0G bounty)
-- `verify_audit.py --walk-from-head` — current verifier has no chain walk
-- `scripts/replay_decision.py` — 0G demo asset
-- `langchain_keeperhub.py` — KeeperHub F2 bounty
-- `docs/KEEPERHUB_FEEDBACK.md`
 - `execution/uniswap_v4/universal_router.py` + `permit2.py`
-- `contracts/ArbiterReceipt.sol` — SBT contract
+- `docs/KEEPERHUB_FEEDBACK.md` (≥3 friction points, ≥4 KB) — KeeperHub Builder Feedback bounty
 - `monitor/public_verifier/` — QR verifier static site
 - `scripts/demo_run.py`, `scripts/chaos/`, `scripts/setup_axl.sh`
 - `consult_sim_oracle` LangGraph node in `agents/patriarch.py` (graph currently ends at `evaluate → END`)

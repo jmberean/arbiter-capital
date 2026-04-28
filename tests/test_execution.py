@@ -8,9 +8,11 @@ sys.modules["safe_eth"] = mock.MagicMock()
 sys.modules["safe_eth.eth"] = mock.MagicMock()
 sys.modules["safe_eth.safe"] = mock.MagicMock()
 
+from eth_utils import keccak
 from core.models import Proposal, ActionType, ConsensusStatus
 from execution.safe_treasury import SafeTreasury
 from execution.uniswap_v4.router import UniswapV4Router
+from execution.uniswap_v4.universal_router import UR_EXEC_SELECTOR
 from execution.keeper_hub import KeeperHubClient
 
 def test_v4_router_calldata():
@@ -27,11 +29,14 @@ def test_v4_router_calldata():
         rationale="test",
         consensus_status=ConsensusStatus.ACCEPTED
     )
-    
+
     calldata = router.generate_calldata(proposal)
     assert isinstance(calldata, bytes)
     assert len(calldata) > 4
-    assert calldata.startswith(b"\x12\x34\x56\x78")
+    # Calldata must start with the Universal Router execute() selector
+    assert calldata[:4] == UR_EXEC_SELECTOR
+    # amount_in_units (1.0 WETH = 1e18 wei) must be correctly derived
+    assert int(proposal.amount_in_units) == 10**18
 
 def test_safe_treasury_mock():
     # Force mock mode for testing
