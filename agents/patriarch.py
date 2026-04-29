@@ -1,17 +1,19 @@
 import json
 import logging
-from typing import TypedDict, Annotated, Sequence, Optional, Literal
-import operator
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
-from langgraph.graph import StateGraph, END
-from core.models import Proposal, ConsensusStatus, ActionType
-from pydantic import BaseModel, Field, ValidationError
 import os
 import time
+import operator
+from typing import TypedDict, Annotated, Sequence, Optional, Literal
+
 from dotenv import load_dotenv
-from agents.quant import calculate_optimal_rotation
 from eth_utils import keccak
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+from langgraph.graph import StateGraph, END
+from pydantic import BaseModel, Field, ValidationError
+
+from agents.quant import calculate_optimal_rotation
+from core.models import Proposal, ConsensusStatus, ActionType
 from memory.llm_context_writer import capture_and_persist
 
 load_dotenv()
@@ -38,6 +40,7 @@ class AgentState(TypedDict):
     reviewed_proposal: Optional[Proposal]
     llm_raw_response: Optional[str]
     llm_messages: Optional[list]
+    sim_result: Optional[dict]
 
 def _reject(p: Proposal, reason: str, detail: str) -> Proposal:
     reviewed = p.model_copy(deep=True)
@@ -115,13 +118,57 @@ def evaluate_proposal(state: AgentState):
         logger.error(f"Failed to evaluate proposal: {e}")
         return {"reviewed_proposal": _reject(p, "OTHER", str(e))}
 
+def consult_sim_oracle(state: AgentState):
+    """Call KeeperHub simulation oracle via the LangChain bridge.
+
+    Skipped if the proposal was already rejected by the evaluate node.
+    On SIM_REVERT, overrides the reviewed_proposal to REJECTED.
+    On failure / timeout, logs a warning and passes through without overriding.
+    """
+    pre_sim = state.get("evaluation_pre_sim")
+    if pre_sim is None or pre_sim.consensus_status != "ACCEPTED":
+        return {}  # already rejected; no simulation needed
+
+    p = state["incoming_proposal"]
+    try:
+        from langchain_keeperhub import KeeperHubSimulateTool
+        from execution.uniswap_v4.router import UniswapV4Router
+
+        router = UniswapV4Router()
+        calldata = router.generate_calldata(p)
+
+        sim_tool = KeeperHubSimulateTool()
+        raw = sim_tool.invoke({
+            "to": os.getenv("UNIVERSAL_ROUTER_ADDRESS", "0x" + "0" * 40),
+            "value": 0,
+            "data_hex": "0x" + calldata.hex(),
+            "operation": 0,
+        })
+        sim_data = json.loads(raw) if isinstance(raw, str) else raw
+        logger.info(f"Sim oracle result for {p.proposal_id}: success={sim_data.get('success')}")
+
+        if not sim_data.get("success", True):
+            reviewed = state["reviewed_proposal"].model_copy(deep=True)
+            reviewed.consensus_status = ConsensusStatus.REJECTED
+            reviewed.rationale += f" | SIM_REVERT: {sim_data.get('revert_reason', 'unknown')}"
+            return {"reviewed_proposal": reviewed, "sim_result": sim_data}
+
+        return {"sim_result": sim_data}
+
+    except Exception as e:
+        logger.warning(f"Sim oracle unavailable ({e}) — keeping evaluate result")
+        return {}
+
+
 # --- Graph Definition ---
 workflow = StateGraph(AgentState)
 workflow.add_node("recheck", deterministic_recheck)
 workflow.add_node("evaluate", evaluate_proposal)
+workflow.add_node("consult_sim_oracle", consult_sim_oracle)
 
 workflow.set_entry_point("recheck")
 workflow.add_edge("recheck", "evaluate")
-workflow.add_edge("evaluate", END)
+workflow.add_edge("evaluate", "consult_sim_oracle")
+workflow.add_edge("consult_sim_oracle", END)
 
 patriarch_app = workflow.compile()

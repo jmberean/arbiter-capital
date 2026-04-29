@@ -38,7 +38,7 @@ This roadmap is a **drop-in implementation playbook**. v5.0 layers five elite fe
   - [x] Step 3.4 — Constrain Patriarch LLM
   - [x] Step 3.5 — Decimals discipline everywhere
 - [6. Day 5 — MVP 6.4: UR + Permit2 + ArbiterThrottleHook ✱ Elite-1](#6-day-5--mvp-64-ur--permit2--arbiterthrottlehook--elite-1)
-  - [ ] Step 4.1 — Pin all addresses Day-5 morning
+  - [x] Step 4.1 — Pin all addresses Day-5 morning
   - [x] Step 4.2 — UR calldata builder
   - [x] Step 4.3 — Refactor `UniswapV4Router.generate_calldata`
   - [x] Step 4.4 — Permit2 helper
@@ -46,7 +46,7 @@ This roadmap is a **drop-in implementation playbook**. v5.0 layers five elite fe
 - [7. Day 6 — MVP 6.5: Sepolia Safe + KeeperHub Module + Sim Oracle ✱ Elite-3](#7-day-6--mvp-65-sepolia-safe--keeperhub-module--sim-oracle--elite-3)
   - [ ] Step 5.1 — Deploy 2-of-2 Safe on Sepolia
   - [ ] Step 5.2 — Enable KeeperHub Module
-  - [ ] Step 5.3 — KeeperHub Sim Oracle ✱ elite-3
+  - [x] Step 5.3 — KeeperHub Sim Oracle ✱ elite-3
   - [ ] Step 5.4 — End-to-end live tx
   - [x] Step 5.5 — `langchain_keeperhub.py` bridge ✱ compliance-7
 - [8. Day 7 — MVP 6.6: Hash-Chained Audit + 0G LLM Substrate ✱ Elite-2 + ArbiterReceipt SBT ✱ Elite-5a](#8-day-7--mvp-66-hash-chained-audit--0g-llm-substrate--elite-2--arbiterreceipt-sbt--elite-5a)
@@ -68,7 +68,7 @@ This roadmap is a **drop-in implementation playbook**. v5.0 layers five elite fe
   - [x] Step 8.4 — `docs/KEEPERHUB_FEEDBACK.md` ✱ compliance-8
   - [ ] Step 8.5 — Dress rehearsal
 - [11. Day 10 — Submission](#11-day-10--submission)
-  - [ ] Step 9.0 — `scripts/check_bounty_compliance.py`
+  - [x] Step 9.0 — `scripts/check_bounty_compliance.py`
   - [ ] Step 9.1 — Final documentation
   - [ ] Step 9.2 — Final smoke test
   - [ ] Step 9.3 — Recording & submission
