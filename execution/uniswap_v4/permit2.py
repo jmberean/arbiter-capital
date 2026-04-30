@@ -3,6 +3,8 @@ Permit2 allowance checker and approval builder.
 ensure_permit2_approval() returns (needs_permit, permit2_input_bytes).
 Callers prepend CMD_PERMIT2_PERMIT to their command list when needs_permit is True.
 """
+from __future__ import annotations
+
 import os
 import time
 import logging

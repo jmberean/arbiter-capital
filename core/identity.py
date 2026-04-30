@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from eth_account import Account
 from eth_utils import to_checksum_address

@@ -122,15 +122,23 @@
 <script>
 const API_BASE = "";  // same-origin; set to "http://localhost:7777" when opening as file://
 
-/* ── Keccak256 via ethers ────────────────────────────────────────────── */
+/* ── Canonical JSON (matches Python's json.dumps(sort_keys=True,
+       separators=(",",":"))). Uses a custom serializer because
+       JSON.stringify accepts no "no spaces + sorted keys" mode. */
+function canonicalJson(value) {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);  // strings keep their internal spaces
+  }
+  if (Array.isArray(value)) {
+    return "[" + value.map(canonicalJson).join(",") + "]";
+  }
+  const keys = Object.keys(value).sort();
+  const parts = keys.map(k => JSON.stringify(k) + ":" + canonicalJson(value[k]));
+  return "{" + parts.join(",") + "}";
+}
+
 function keccak256Json(obj) {
-  const canonical = JSON.stringify(
-    Object.fromEntries(Object.entries(obj).sort()),
-    (_, v) => v,
-    0  // no extra spaces
-  );
-  // ethers expects a hex string or Uint8Array
-  const bytes = new TextEncoder().encode(canonical);
+  const bytes = new TextEncoder().encode(canonicalJson(obj));
   return ethers.keccak256(bytes);
 }
 
@@ -152,28 +160,11 @@ async function fetchReceipt(hashOrId) {
 function integrityOk(receipt) {
   const stored = receipt.receipt_hash;
   if (!stored) return true;  // pre-v5 receipt
-  const body = Object.fromEntries(Object.entries(receipt).filter(([k]) => k !== "receipt_hash"));
-  const canonical = JSON.stringify(
-    body,
-    (key, value) => value,
-    // must match Python's json.dumps(sort_keys=True, separators=(",",":"))
+  const body = Object.fromEntries(
+    Object.entries(receipt).filter(([k]) => k !== "receipt_hash")
   );
-  // Rebuild with sorted keys
-  const sorted = sortKeysDeep(body);
-  const text = JSON.stringify(sorted).replace(/\s/g, "");
-  const bytes = new TextEncoder().encode(text);
-  const computed = ethers.keccak256(bytes);
+  const computed = keccak256Json(body);
   return computed.toLowerCase() === stored.toLowerCase();
-}
-
-function sortKeysDeep(obj) {
-  if (Array.isArray(obj)) return obj.map(sortKeysDeep);
-  if (obj !== null && typeof obj === "object") {
-    return Object.fromEntries(
-      Object.keys(obj).sort().map(k => [k, sortKeysDeep(obj[k])])
-    );
-  }
-  return obj;
 }
 
 /* ── Render helpers ──────────────────────────────────────────────────── */

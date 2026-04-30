@@ -19,8 +19,17 @@ import os
 from typing import Optional, Type
 
 from langchain_core.tools import BaseTool
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+
+try:
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+    HAS_MCP = True
+except ImportError:
+    ClientSession = None  # type: ignore
+    StdioServerParameters = None  # type: ignore
+    stdio_client = None  # type: ignore
+    HAS_MCP = False
+
 from pydantic import BaseModel, Field
 
 
@@ -45,7 +54,7 @@ class _ExecuteInput(_SimulateInput):
 
 async def _mcp_call(tool_name: str, args: dict) -> dict:
     server_path = os.environ.get("KEEPERHUB_SERVER_PATH")
-    if not server_path:
+    if not server_path or not HAS_MCP:
         # Mock path: return a plausible success response for dev/testing
         if tool_name == "simulate_safe_tx":
             return {"success": True, "gas_used": 120000, "return_data": "0x",

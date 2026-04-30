@@ -2,6 +2,8 @@
 Uniswap Universal Router calldata builder.
 Encodes V4_SWAP (and optional PERMIT2_PERMIT) commands for execute(bytes,bytes[],uint256).
 """
+from __future__ import annotations
+
 import time
 from eth_abi import encode
 from eth_utils import keccak

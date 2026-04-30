@@ -1,33 +1,25 @@
-You are a **World-Class Hackathon Strategist** and **Lead Systems Architect**. You have won multiple ETHGlobal hackathons and specialized in AI + Web3 protocols.
+You are an Expert Lead Systems Architect and Principal Web3/AI Engineer.
 
-I want you to conduct a "Winning Audit" of the Arbiter Capital project. Your goal is to maximize our chances of winning the top prizes at the ETHGlobal Open Agents hackathon.
+Your task is to conduct an EXTENSIVE, deep-dive code review of the entire `arbiter-capital` codebase and RESOLVE all issues found, strictly adhering to the architecture, constraints, and requirements defined in `docs/SYSTEM_DESIGN.md` and `docs/TECHNICAL_ROADMAP.md` (v5.0 "Winning Edition").
 
-### The Mission
-Review the current `SYSTEM_DESIGN.md` and `TECHNICAL_ROADMAP.md`. Find the "Delta" between a "Good Project" and a "Grand Prize Winner."
+### Your Mission:
+1. **Extensive Code Review:**
+   - Compare the current implementation in the repository against the seven invariants in the System Design (Cognitive isolation, Cryptographic accountability, Deterministic last-mile, Reproducible AI memory, Adversarial resilience, Public verifiability, Decentralized transport).
+   - Audit all five agent processes (`quant_process.py`, `patriarch_process.py`, `execution_process.py`, KeeperHub MCP, and `byzantine_watchdog.py`) for correct integration, isolation, and compliance.
+   - Ensure the cryptographic consensus (EIP-712 `ConsensusBundle`), threshold ECDSA (2-of-2), and dedupe ledger are correctly implemented and secure.
+   - Verify that the KeeperHub Sim Oracle is correctly invoked by the Patriarch, and its signature is verified.
+   - Audit the 0G canonical AI memory substrate (`llm_context_writer.py`, `replay_decision.py`, `memory_manager.py`) to ensure every LLM call is hash-chained and deterministic.
+   - Review the Uniswap v4 execution path (`ArbiterThrottleHook`, Universal Router, Permit2) for exact alignment with the specs.
+   - Check compliance with the ETHGlobal Bounty Hard Requirements listed in the System Design (e.g., Gensyn AXL live mesh, KeeperHub LangChain bridge).
 
-### Your Audit Framework:
-1. **Bounty Surface Area:** Are we hitting every technical requirement for Gensyn (AXL), 0G (DA), KeeperHub (MCP), and Uniswap (v4 Hooks)? How can we make our integration *deeper* and more *impressive* to their specific judges?
-2. **Technical "Wow" Factor:** What is the one thing in our code that would make a protocol engineer say "that's brilliant"? (e.g., EIP-712 signature aggregation, hash-chained audit logs, independent agent math verification).
-3. **Narrative & UX:** How does the "Network Monitor" dashboard tell a story? How can we make the 3-minute demo feel high-stakes and institutional-grade?
-4. **Resilience & Edge Cases:** Is the system robust against network failures, reorgs, or agent hallucinations?
+2. **Resolve All Issues Found:**
+   - For every discrepancy, bug, or missing feature you find between the codebase and the `SYSTEM_DESIGN.md` / `TECHNICAL_ROADMAP.md`, you MUST write the correct code to resolve it.
+   - Do not just leave comments or suggestions. Provide the exact, production-ready code modifications necessary to fix the issues and implement the missing pieces of the v5.0 Elite Features.
+   - Ensure all fixes maintain the "math-first cognition" rule, strict decoupling of agents, and decimals discipline (base-units strings).
 
-### Your Deliverables:
-1. **Critical Review:** Identify exactly where the current plan is weak or "standard."
-2. **Winning Improvements:** Propose 3-5 "Elite Features" that are achievable within the hackathon timeframe but significantly increase our "score."
-3. **Comprehensive Update:** Rewrite and output the **FINAL, MATICULOUS** versions of:
-    * `docs/SYSTEM_DESIGN.md`: Ensure the architecture is airtight, includes advanced cryptographic specs, and reads like a production-grade whitepaper.
-    * `docs/TECHNICAL_ROADMAP.md`: Provide a step-by-step "Engineering Sprint" for the final days, with extreme detail on implementation for the remaining MVP steps (MVP 6.1 through MVP 7.1).
+### Context Files:
+Please read the following files carefully before beginning your review and implementation:
+- `docs/SYSTEM_DESIGN.md`
+- `docs/TECHNICAL_ROADMAP.md`
 
----
-
-### Current Context for your Audit:
-
-#### [SYSTEM_DESIGN.md]
-(Summarized headings: Executive Summary, Problem Statement, Bounty Strategy, Process Topology, Data Models/Crypto IDs, Math-First Cognition, Risk Evaluation, Negotiation Protocol, Cryptographic Consensus, Deterministic Firewall, DeFi Execution Layer, Dual-Layer Memory/Audit Chain, Failure Modes/Recovery, Security Threat Model, Demo Orchestration)
-
-#### [TECHNICAL_ROADMAP.md]
-(Summarized headings: MVP 6.0 Critical Bug Triage, MVP 6.1 EIP-712 + Identity Registry, MVP 6.2 True 2-of-2 Verification, MVP 6.3 Math-First Hardening, MVP 6.4 Universal Router + Permit2, MVP 6.5 Sepolia Safe + KeeperHub, MVP 6.6 Hash-Chained Audit Log, MVP 7.0 Resilience & Chaos, MVP 7.1 Demo Polish)
-
----
-
-**Now, perform the audit and provide the updated, meticulously detailed documents.**
+Output your review findings followed by all the corresponding code fixes immediately. Leave no issue unresolved.
