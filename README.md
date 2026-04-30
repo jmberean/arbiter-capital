@@ -1,81 +1,62 @@
-# Arbiter Capital - Autonomous Family Office (v3.0)
+# Arbiter Capital — Autonomous Family Office (v5.0 — "Winning Edition")
 
-**Arbiter Capital** is an Autonomous Multi-Agent Treasury Manager designed to maximize yield across decentralized finance (DeFi). To solve the "black box" trust issue for institutional capital, the system splits AI cognition into two isolated personas: an aggressive "Yield Quant" and a conservative "Risk Patriarch." 
+**Arbiter Capital** is an autonomous, multi-agent DeFi treasury manager designed for institutional-grade capital management. To solve the "black box" trust issue, the system employs **cognitive isolation** across a 4-persona "Agent Town," cryptographic accountability via EIP-712 signatures, and reproducible AI memory on the 0G Layer 1.
 
-These agents formulate structured proposals based on predictive models and debate them over a decentralized mesh network. Trades are only executed via a treasury Safe when cryptographically verifiable consensus is reached.
+Built for the **ETHGlobal Open Agents** hackathon, Arbiter Capital moves beyond simple chatbots to a fully autonomous, adversarial-resilient execution engine.
 
-## Core Architecture & Topology
+## 🏛️ Architecture: The Agent Town
 
-The system operates via three distinct processes to ensure decentralization and safety:
+Cognition is split into four isolated personas communicating exclusively over the **Gensyn AXL** decentralized P2P mesh:
 
-1.  **Process 1: The Quant (Agent 1 Runtime)**
-    *   **Objective:** Identify yield opportunities using math-first cognition.
-    *   **Stack:** LangGraph + Python Quantitative Scripts + OpenAI (gpt-5.4-nano).
-2.  **Process 2: The Patriarch (Agent 2 Runtime)**
-    *   **Objective:** Capital preservation and strict adherence to drawdown limits.
-    *   **Stack:** LangGraph + OpenAI (gpt-5.4-nano).
-3.  **Process 3: The Execution Node & Policy Firewall**
-    *   **Objective:** Enforces deterministic safety rules and routes authorized payloads to the Safe (Smart Account).
-    *   **Stack:** Deterministic Python runtime (Safe-ETH-Py + Web3.py).
+1.  **The Yield Quant (P1):** Math-first cognition using quantitative tools (GARCH, Kelly Criterion) to identify alpha.
+2.  **The Risk Patriarch (P2):** Conservative guardian focusing on capital preservation and risk-adjusted returns.
+3.  **The Sim-Oracle Auditor (P3):** Powered by **KeeperHub MCP**, providing real-time fork-simulation as a consensus signal.
+4.  **The Byzantine Watchdog (P4):** An adversarial process that attempts to corrupt the network, proving the system's resilience on-camera.
 
-## Getting Started (Local Decentralized Simulation)
+Execution is handled by a deterministic **Execution Node (Firewall)** that enforces hardcoded safety constraints before routing trades to a **2-of-2 Sepolia Safe**.
 
-The current MVP 4 implements a full 3-process topology with autonomous negotiation loops, smart account execution, and Uniswap v4 Hook-aware routing.
+## 🚀 Elite Features (v5.0)
 
-### Key Capabilities
+*   **🎯 ArbiterThrottleHook:** A custom Uniswap v4 hook deployed on Sepolia that prevents self-MEV by throttling consecutive swaps within a TWAP window.
+*   **🧠 0G AI Memory Substrate:** Every LLM call (system prompt, messages, model ID, response) is hash-chained to the 0G Layer 1, making AI decisions cryptographically reproducible via `scripts/replay_decision.py`.
+*   **🛂 KeeperHub Sim Oracle:** KeeperHub is integrated as a consensus participant, vetoing proposals that revert in simulation before any gas is spent.
+*   **🐺 Byzantine Resilience:** The system is built to detect and reject scripted attacks (forged math, invalid signatures, replay nonces) in real-time.
+*   **🎟️ Soulbound Decision Receipts:** Every successful execution mints an ERC-721 SBT to the Safe, linking the on-chain trade to its 0G audit trail.
+*   **🔍 Public Verifier:** A QR-served verifier page allows anyone to walk the 0G audit chain and verify the integrity of the AI's cognition.
 
-*   **Self-Correction Loop:** The Quant agent automatically iterates on proposals based on the Patriarch's risk feedback.
-*   **Uniswap v4 Routing:** Execution node handles dynamic calldata generation for v4 Hooks (e.g., Volatility Oracles).
-*   **Proof of Debate:** Immutable audit trails stored on 0G including the entire P2P negotiation transcript.
+## 🛠️ Tech Stack
 
-### Prerequisites
+*   **Agent Framework:** Python-based LangGraph.
+*   **Networking:** Gensyn AXL (Serverless, encrypted P2P mesh).
+*   **Memory:** 0G Layer 1 (Canonical AI Memory) + ChromaDB (Local Recall).
+*   **Execution:** KeeperHub (Safe Module & MCP) + Uniswap v4 (Hooks & Universal Router).
+*   **Trust Layer:** EIP-712 signatures for all agent-to-agent negotiations.
 
-*   Python 3.10+
-*   OpenAI API Key
+## 🏁 Roadmap (v5.0 "Winning Sprint")
 
-### Setup
+*   **MVP 1-5:** COMPLETED (Core Framework, Multi-Process P2P, Dual-Layer Memory).
+*   **MVP 6 (Current):** **Winning Edition Hardening.** Implementing EIP-712, true 2-of-2 Safe execution, ArbiterThrottleHook, and 0G LLM Substrate.
+*   **MVP 7:** Byzantine Watchdog & Public Verifier UI.
 
-1.  Create a virtual environment and install dependencies:
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    ```
+## ⚡ Getting Started
 
-2.  Copy the example environment file and add your API key:
-    ```bash
-    cp .env.example .env
-    ```
-    *Edit `.env` and set your `OPENAI_API_KEY`.*
+### Environment Setup
+1.  `uv venv` && `.venv\Scripts\activate` (Windows) or `source .venv/bin/activate` (Unix).
+2.  `uv pip install -r requirements.txt`
+3.  `cp .env.example .env` and insert your API keys (OpenAI, 0G, KeeperHub, Sepolia).
 
-### Running the End-to-End Simulation
+### Running the Network
+The architecture requires five separate processes to prove decentralization. Ensure `AXL_NODE_URL_*` are configured in your `.env`.
 
-To simulate the decentralized network, you must run the isolated processes in separate terminal windows.
+1.  **AXL Mesh:** Run `bash scripts/setup_axl.sh` to bring up the 5 P2P nodes.
+2.  **The Quant:** `python quant_process.py`
+3.  **The Patriarch:** `python patriarch_process.py`
+4.  **The Execution Node:** `python execution_process.py`
+5.  **Sim Oracle:** Ensure the KeeperHub MCP server is running.
+6.  **The Watchdog:** `python byzantine_watchdog.py` (For demo/adversarial testing).
 
-**Terminal 1: Start the Quant Agent (Process 1)**
-```bash
-python quant_process.py
-```
+### Verifying the Audit
+`python verify_audit.py --walk-from-head`
 
-**Terminal 2: Start the Risk Patriarch (Process 2)**
-```bash
-python patriarch_process.py
-```
-
-**Terminal 3: Start the Execution Node (Process 3)**
-```bash
-python execution_process.py
-```
-
-**Terminal 4: Inject Market Data (Demo Trigger)**
-```bash
-python market_injector.py <scenario>
-```
-
-Available Scenarios:
-*   `flash_crash_eth`: Triggers rotation to stablecoin.
-*   `protocol_hack`: Simulates a security exploit; triggers **Emergency Withdrawal**.
-*   `gas_war`: Spikes gas to $500; tests if agents correctly skip low-profit trades.
-*   `pendle_yield_arbitrage`: Massive yield on Pendle; triggers **Yield Trade** action.
-*   `lst_expansion`: stETH yield surges; triggers **Stake LST** rotation.
-*   `cross_chain_alpha`: Triggers **Bridge** action to capture high yields on other chains.
+---
+*For detailed specifications, see `docs/SYSTEM_DESIGN.md` and `docs/TECHNICAL_ROADMAP.md`.*
