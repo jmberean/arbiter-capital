@@ -1,23 +1,38 @@
 #!/usr/bin/env bash
-# scripts/setup_axl.sh — bring up 5 distinct AXL nodes locally for demo path
-# Per Gensyn AXL docs:
+# Updated for live Gensyn AXL config format (JSON)
 
 set -euo pipefail
 PORTS=(9001 9002 9003 9004 9005)
 NODE_IDS=("Quant_Node_A" "Patriarch_Node_B" "Execution_Node_P3" "KeeperHub_Sim_P4" "Adversary_Node_Z")
 
-mkdir -p ./state/axl_keys
-mkdir -p ./state/axl_logs
+mkdir -p state/axl_logs
+mkdir -p state/axl_configs
+
+# Node 1 is our hub for this local mesh
+HUB_PEER="tls://127.0.0.1:9001"
 
 for i in "${!PORTS[@]}"; do
-  # The exact AXL CLI flags must be verified against the live Gensyn docs
-  # This is a representative scaffold based on the roadmap
-  axl-node \
-    --listen "127.0.0.1:${PORTS[$i]}" \
-    --node-id "${NODE_IDS[$i]}" \
-    --keystore "./state/axl_keys/${NODE_IDS[$i]}.key" \
-    --peers "127.0.0.1:9001,127.0.0.1:9002,127.0.0.1:9003,127.0.0.1:9004,127.0.0.1:9005" \
-    --log-file "./state/axl_logs/${NODE_IDS[$i]}.log" &
+  CONFIG_FILE="state/axl_configs/${NODE_IDS[$i]}.json"
+  
+  # Set peers (Hub connects to no one initially, everyone else connects to the Hub)
+  if [ $i -eq 0 ]; then
+    PEERS="[]"
+  else
+    PEERS="[\"$HUB_PEER\"]"
+  fi
+
+  # Generate the JSON config
+  cat <<EOF > "$CONFIG_FILE"
+{
+  "PrivateKeyPath": "state/axl_keys/${NODE_IDS[$i]}.pem",
+  "Listen": ["tls://127.0.0.1:${PORTS[$i]}"],
+  "Peers": $PEERS
+}
+EOF
+
+  # Launch the node
+  ./axl-node.exe -config "$CONFIG_FILE" > "state/axl_logs/${NODE_IDS[$i]}.log" 2>&1 &
   echo "Started ${NODE_IDS[$i]} on port ${PORTS[$i]} (pid $!)"
 done
+
 wait

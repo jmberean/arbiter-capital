@@ -18,5 +18,9 @@ state/
 # Foundry
 out/
 cache/
+lib/
 artifacts/
 broadcast/
+# Binaries
+axl-node.exe
+*.exe
