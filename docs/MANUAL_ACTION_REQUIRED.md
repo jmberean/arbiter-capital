@@ -109,13 +109,14 @@ set in its low 14 bits (CREATE2 salt mining required).
   - [x] a. `V4_POOL_MANAGER=0x000000000004444c5dc75cb358380d2e3de08a90` — added (verify still current before deploy).
   - [x] b. `PERMIT2_ADDRESS=0x000000000022D473030F116dDEE9F6B43aC78BA3` — added (canonical cross-chain).
   - [x] c. `SEPOLIA_RPC=https://rpc.ankr.com/eth_sepolia` — added (mirrors existing `ETH_RPC_URL`; swap for Alchemy/Infura endpoint for reliability under load).
-  - [ ] d. `UNIVERSAL_ROUTER_ADDRESS` — **still needed**. Look up from Uniswap's official Sepolia deployment registry and add to `.env`.
-  - [ ] e. `ETHERSCAN_API_KEY` — **still needed** for `--verify` flag on deployment.
-- [ ] 4. Write `script/HookMiner.s.sol` (does not exist yet) and mine the CREATE2 salt (can take 5–30 minutes):
+  - [x] d. `UNIVERSAL_ROUTER_ADDRESS=0x66a9893cc07d91d95644aedd05d03f95e1dba8af` — confirmed (Uniswap v4 Sepolia).
+  - [ ] e. `ETHERSCAN_API_KEY` — add from etherscan.io/myapikey.
+- [x] 4. `script/HookMiner.s.sol` written ✓. Run to mine the salt (takes seconds, ~16k iterations):
    ```bash
    forge script script/HookMiner.s.sol --rpc-url $SEPOLIA_RPC -vvv
    ```
-- [ ] 5. Write `script/DeployThrottleHook.s.sol` (does not exist yet) and deploy:
+   Copy the printed `HOOK_SALT` and `ARBITER_THROTTLE_HOOK` into `.env` before step 5.
+- [x] 5. `script/DeployThrottleHook.s.sol` written ✓. Deploy (requires step 4 salt + Etherscan key):
    ```bash
    forge script script/DeployThrottleHook.s.sol \
        --rpc-url $SEPOLIA_RPC \
@@ -146,11 +147,10 @@ expects (low 14 bits, `& 0x3FFF`).
 
 **Depends on:** Step 2 (Sepolia ETH), Foundry installed ✓, Step 4 (Foundry project initialized ✓).
 
-The contract already exists at `contracts/ArbiterReceipt.sol`. The deploy script does not
-yet exist — write `script/DeployArbiterReceipt.s.sol` first.
+The contract already exists at `contracts/ArbiterReceipt.sol`. Deploy script written at `script/DeployArbiterReceipt.s.sol`.
 
 ### What to do
-- [ ] 1. Write `script/DeployArbiterReceipt.s.sol`.
+- [x] 1. `script/DeployArbiterReceipt.s.sol` written ✓.
 - [ ] 2. Deploy:
    ```bash
    forge script script/DeployArbiterReceipt.s.sol \
@@ -223,8 +223,7 @@ and all chaos scripts involving `keeperhub_mcp_crash.sh`.
 **Depends on:** Steps 3 ✓ and 7 (Safe deployed, KeeperHub running).
 
 ### What to do
-- [ ] 1. Create `scripts/enable_permit2.py` if it doesn't exist — it should call
-   `Permit2.approve(token, spender, amount, expiry)` for each asset (WETH, USDC, stETH, WBTC, PT-USDC).
+- [x] 1. `scripts/enable_permit2.py` written ✓ — calls `Permit2.approve(token, universalRouter, maxUint160, maxUint48)` for WETH, USDC, stETH, WBTC via direct Safe `execTransaction` (EIP-712 signed by QUANT_KEY + PATRIARCH_KEY). Does NOT require KeeperHub.
 - [ ] 2. Run:
    ```bash
    python scripts/enable_permit2.py
@@ -403,13 +402,13 @@ Steps 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 → Step 9 (E2E live tx)
 
 | Item | File | Status |
 |---|---|---|
-| `scripts/enable_permit2.py` | Not yet created | Blocked on Safe address ✓ — can be written now |
-| ArbiterThrottleHook Solidity contract | `contracts/ArbiterThrottleHook.sol` | **Done** — compiles against v4-core v4.0.0 ✓ |
-| ArbiterReceipt Solidity contract | `contracts/ArbiterReceipt.sol` | **Exists** — needs deploy script |
+| `scripts/enable_permit2.py` | `scripts/enable_permit2.py` | **Done** ✓ — EIP-712 Safe tx, direct execTransaction |
+| ArbiterThrottleHook Solidity contract | `contracts/ArbiterThrottleHook.sol` | **Done** ✓ — compiles against v4-core v4.0.0 |
+| ArbiterReceipt Solidity contract | `contracts/ArbiterReceipt.sol` | **Done** ✓ — needs deployment |
 | Foundry project scaffolding | `foundry.toml` (repo root) | **Done** ✓ |
-| `script/HookMiner.s.sol` | Not yet created | Needs permission flags from hook contract |
-| `script/DeployThrottleHook.s.sol` | Not yet created | Needs hook contract ✓ + miner |
-| `script/DeployArbiterReceipt.s.sol` | Not yet created | Needs Foundry project ✓ |
+| `script/HookMiner.s.sol` | `script/HookMiner.s.sol` | **Done** ✓ — run `forge script` to mine salt |
+| `script/DeployThrottleHook.s.sol` | `script/DeployThrottleHook.s.sol` | **Done** ✓ — run after mining salt |
+| `script/DeployArbiterReceipt.s.sol` | `script/DeployArbiterReceipt.s.sol` | **Done** ✓ — run to deploy SBT |
 | `docs/BOUNTY_PROOF.md` | Not yet created | Needs real tx hashes |
 | `docs/AUDIT_REPRODUCE.md` | Not yet created | Can be written anytime |
 | `docs/SECURITY.md` | Not yet created | Can be written anytime |
