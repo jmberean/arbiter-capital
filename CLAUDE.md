@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Silent execution:** Plan steps internally, execute, and review thoroughly before responding. Avoid narrating every action in chat.
 - **Iterative commits:** Break tasks into small logical units and commit frequently with descriptive messages.
-- **Living documentation:** Keep `README.md`, `GEMINI.md`, `CLAUDE.md`, and `docs/` in sync with implementation — docs must never lag behind code.
+- **Living documentation:** Keep `README.md`, `GEMINI.md`,`TECHNICAL_ROADMAP.md`, `CLAUDE.md`, and `docs/` in sync with implementation — docs must never lag behind code.
 - **Keep `.gitignore` and `requirements.txt` updated** whenever new files, dirs, or dependencies are introduced.
 - **Always use the venv:** All Python commands must run inside `.venv`. Activate with `.venv\Scripts\activate` (Windows) before any `python` or `pytest` call. Install packages with `uv pip install <pkg>` *while the venv is active* — never `pip install` directly.
 - **Roadmap checkbox discipline:** After implementing and testing a step, immediately update `docs/TECHNICAL_ROADMAP.md` — change `### [ ] Step X.Y` to `### [x] Step X.Y`. Only mark done after the relevant test passes or the compliance gate confirms it. Do not batch-update checkboxes.
@@ -98,7 +98,7 @@ Pure Python, no LLM. Checks: protocol whitelist, asset whitelist, max USD value 
 - `docs/KEEPERHUB_FEEDBACK.md` (≥3 friction points, ≥4 KB) — KeeperHub Builder Feedback bounty
 - `monitor/public_verifier/` — QR verifier static site
 - `scripts/demo_run.py`, `scripts/chaos/`, `scripts/setup_axl.sh`
-- `consult_sim_oracle` LangGraph node in `agents/patriarch.py` (graph currently ends at `evaluate → END`)
+- `monitor/public_verifier/` — QR verifier static site
 
 ## Environment Variables
 
@@ -117,7 +117,7 @@ ZERO_G_CHAIN_ID=16602
 UNIVERSAL_ROUTER_ADDRESS=
 ARBITER_THROTTLE_HOOK=
 ARBITER_RECEIPT_NFT=
-KEEPERHUB_SERVER_PATH=   # Path to KeeperHub MCP server binary
+KEEPERHUB_SERVER_PATH=scripts/keeperhub_mcp_server.py   # Python MCP server (built-in)
 AXL_NODE_URL_QUANT=http://127.0.0.1:9001
 AXL_NODE_URL_PATRIARCH=http://127.0.0.1:9002
 AXL_NODE_URL_EXEC=http://127.0.0.1:9003

@@ -157,6 +157,8 @@ def consult_sim_oracle(state: AgentState):
             "value": 0,
             "data_hex": "0x" + calldata.hex(),
             "operation": 0,
+            "proposal_id": p.proposal_id,
+            "iteration": p.iteration,
         })
         sim_data = json.loads(raw) if isinstance(raw, str) else raw
 

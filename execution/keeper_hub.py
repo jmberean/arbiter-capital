@@ -54,6 +54,12 @@ class KeeperHubClient:
         if self.server_path and not HAS_MCP:
             logger.warning("KEEPERHUB_SERVER_PATH set but `mcp` package not installed — falling back to MOCK mode.")
 
+    def _server_command(self) -> tuple[str, list[str]]:
+        import sys as _sys
+        if self.server_path and self.server_path.endswith(".py"):
+            return _sys.executable, [self.server_path]
+        return "node", [self.server_path]
+
     # ------------------------------------------------------------------
     # simulate_safe_tx
     # ------------------------------------------------------------------
@@ -136,8 +142,9 @@ class KeeperHubClient:
                 "request_id": f"mock_req_{os.urandom(4).hex()}",
             }
 
+        cmd, cmd_args = self._server_command()
         server_params = StdioServerParameters(
-            command="node", args=[self.server_path], env=os.environ.copy()
+            command=cmd, args=cmd_args, env=os.environ.copy()
         )
         async with stdio_client(server_params) as (read, write):
             async with ClientSession(read, write) as session:
@@ -170,8 +177,9 @@ class KeeperHubClient:
         if self.mock_mode:
             return f"mcp_tx_{os.urandom(4).hex()}"
 
+        cmd, cmd_args = self._server_command()
         server_params = StdioServerParameters(
-            command="node", args=[self.server_path], env=os.environ.copy()
+            command=cmd, args=cmd_args, env=os.environ.copy()
         )
         async with stdio_client(server_params) as (read, write):
             async with ClientSession(read, write) as session:
