@@ -45,7 +45,7 @@ This roadmap is a **drop-in implementation playbook**. v5.0 layers five elite fe
   - [ ] Step 4.5 — Deploy ArbiterThrottleHook ✱ elite-1
 - [7. Day 6 — MVP 6.5: Sepolia Safe + KeeperHub Module + Sim Oracle ✱ Elite-3](#7-day-6--mvp-65-sepolia-safe--keeperhub-module--sim-oracle--elite-3)
   - [ ] Step 5.1 — Deploy 2-of-2 Safe on Sepolia
-  - [ ] Step 5.2 — Enable KeeperHub Module
+  - [x] Step 5.2 — Enable KeeperHub Module
   - [x] Step 5.3 — KeeperHub Sim Oracle ✱ elite-3
   - [ ] Step 5.4 — End-to-end live tx
   - [x] Step 5.5 — `langchain_keeperhub.py` bridge ✱ compliance-7
@@ -782,15 +782,11 @@ def validate_hook_address(hook_addr: str, expected_flags: int) -> bool:
 ### [ ] Step 5.1 — Deploy 2-of-2 Safe on Sepolia
 Via `app.safe.global?chain=sep`. Owners: `[QUANT_ADDR, PATRIARCH_ADDR]`. Threshold: 2. Fund: 0.1 WETH, 100 USDC, 0.1 stETH, 0.01 WBTC. Pin `SAFE_ADDRESS` in `.env`.
 
-### [ ] Step 5.2 — Enable KeeperHub Module
-**New file:** `scripts/enable_keeperhub_module.py`
+### [x] Step 5.2 — Enable KeeperHub Module
+**File:** `scripts/enable_keeperhub_module.py`
 
-```python
-# Builds enableModule(KEEPERHUB_ADDR) Safe tx, computes safe_tx_hash,
-# both Quant and Patriarch sign (via core/identity keys), submits via safe-eth-py.
-```
-
-Run once before Day 6 e2e test.
+Module `0xf278A8c45d6cf6AECe9c0F7217Fe1bfD7b1a5C8D` enabled on Safe via 2-of-3 (Quant + Patriarch signatures).
+Tx: `0x7cd80e05dbb594f70cf6439c168817eb873d9b12811c4a988049a10a01a3f30b` — Sepolia block 10775996.
 
 ### [ ] Step 5.3 — KeeperHub Sim Oracle (the elite move)
 **File:** `execution/keeper_hub.py`

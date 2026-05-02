@@ -139,22 +139,22 @@ The contract already exists at `contracts/ArbiterReceipt.sol`. Deploy script wri
 
 ---
 
-## 6. Enable KeeperHub Module on Safe (Step 5.2)
+## 6. Enable KeeperHub Module on Safe (Step 5.2) ✓ COMPLETE
 
 **Depends on:** Steps 3 ✓ and the KeeperHub server running (Step 7 below).
 
-The script `scripts/enable_keeperhub_module.py` was written in the last commit.
-You still need to **run it** with real keys against the live Safe.
-
 ### What to do
-- [ ] 1. Complete Step 7 (KeeperHub server setup) first.
-- [ ] 2. Run:
+- [x] 1. Complete Step 7 (KeeperHub server setup) first.
+- [x] 2. Run:
    ```bash
    python scripts/enable_keeperhub_module.py
    ```
-- [ ] 3. Both `QUANT_PRIVATE_KEY` and `PATRIARCH_PRIVATE_KEY` must be set in `.env` for this to
+- [x] 3. Both `QUANT_PRIVATE_KEY` and `PATRIARCH_PRIVATE_KEY` must be set in `.env` for this to
    produce the 2-of-2 multisig that the Safe requires.
-- [ ] 4. Confirm on Sepolia Etherscan: the Safe's modules list now includes the KeeperHub address.
+- [x] 4. Confirm on Sepolia Etherscan: the Safe's modules list now includes the KeeperHub address.
+   - Module: `0xf278A8c45d6cf6AECe9c0F7217Fe1bfD7b1a5C8D`
+   - Tx: `0x7cd80e05dbb594f70cf6439c168817eb873d9b12811c4a988049a10a01a3f30b`
+   - Block: 10775996 (Sepolia)
 
 ---
 
@@ -360,8 +360,8 @@ Step 8  (Permit2 approvals)       script written, needs WETH/stETH/WBTC in Safe 
 
 Step 7  (KeeperHub server)        ✓ DONE — scripts/keeperhub_mcp_server.py, attestor 0xf278A8c4...
 
-Step 6  (Enable KeeperHub Module on Safe)  ← NEXT BLOCKER
-  └→ Step 8  (Run Permit2 approvals)
+Step 6  (Enable KeeperHub Module on Safe)  ✓ DONE — 0x7cd80e05...f30b, block 10775996
+  └→ Step 8  (Run Permit2 approvals)  ← NEXT BLOCKER (needs WETH/stETH/WBTC in Safe first)
   └→ Step 9  (E2E live tx)
        └→ Step 10 (Real KEEPERHUB_FEEDBACK.md)
        └→ Step 11 (Deploy public verifier to Vercel)
