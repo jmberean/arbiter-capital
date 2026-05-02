@@ -1,7 +1,7 @@
 # Manual Action Required — Arbiter Capital Go-Live Checklist
 
-**As of:** 2026-04-30
-**Deadline:** 2026-05-06 (6 days)
+**As of:** 2026-04-30 (updated 2026-04-30)
+**Deadline:** 2026-05-06 (6 days remaining)
 **Why this doc exists:** Everything below requires keys, wallets, running infrastructure, or
 real-world experience that requires manual action.
 Work through this list in order — later items depend on earlier ones.
@@ -44,7 +44,7 @@ test tokens.
   - [x] a. Used **MetaMask wallet** (`0xba57...`) as the deployer/admin — required because Safe's web UI (https://app.safe.global) only accepts browser wallet connections, not raw private keys.
   - [x] b. Funded MetaMask with Sepolia ETH via faucet.
   - [x] c. Balance confirmed sufficient for Safe deployment + upcoming hook deploy.
-  - [ ] d. Still needed: confirm `EXECUTOR_PRIVATE_KEY` EOA also has ≥0.1 Sepolia ETH for execution txs (`cast balance <addr> --rpc-url $SEPOLIA_RPC`). This key pays gas for automated agent transactions, separate from the MetaMask deployer.
+  - [x] d. `EXECUTOR_PRIVATE_KEY` EOA (`0xba57...`) confirmed funded — successfully paid gas for ArbiterThrottleHook + ArbiterReceipt deployments.
 - [x] 2. Get Sepolia test tokens for the Safe (Safe is deployed — see Step 3).
   - [ ] a. **WETH** — wrap Sepolia ETH from the Safe:
       - Open https://app.safe.global → your Safe → "New transaction" → "Contract interaction".
@@ -61,7 +61,7 @@ test tokens.
    WBTC_ADDRESS=0x29f2d40b0605204364af54ec677bd022da425d03
    PT_USDC_ADDRESS=0x0000000000000000000000000000000000000000  ← still a placeholder
    ```
-  - [ ] Confirm: `python -c "import os; from dotenv import load_dotenv; load_dotenv(); [print(k, os.getenv(k)) for k in ['WETH_ADDRESS','USDC_ADDRESS','STETH_ADDRESS','WBTC_ADDRESS','PT_USDC_ADDRESS']]"`.
+  - [x] Confirmed: all four token addresses present in `.env`. `PT_USDC_ADDRESS` remains zero-address placeholder — document as mock substitution in `docs/BOUNTY_PROOF.md`.
 
 ---
 
@@ -110,36 +110,16 @@ set in its low 14 bits (CREATE2 salt mining required).
   - [x] b. `PERMIT2_ADDRESS=0x000000000022D473030F116dDEE9F6B43aC78BA3` — added (canonical cross-chain).
   - [x] c. `SEPOLIA_RPC=https://rpc.ankr.com/eth_sepolia` — added (mirrors existing `ETH_RPC_URL`; swap for Alchemy/Infura endpoint for reliability under load).
   - [x] d. `UNIVERSAL_ROUTER_ADDRESS=0x66a9893cc07d91d95644aedd05d03f95e1dba8af` — confirmed (Uniswap v4 Sepolia).
-  - [ ] e. `ETHERSCAN_API_KEY` — add from etherscan.io/myapikey.
-- [x] 4. `script/HookMiner.s.sol` written ✓. Run to mine the salt (takes seconds, ~16k iterations):
-   ```bash
-   forge script script/HookMiner.s.sol --rpc-url $SEPOLIA_RPC -vvv
-   ```
-   Copy the printed `HOOK_SALT` and `ARBITER_THROTTLE_HOOK` into `.env` before step 5.
-- [x] 5. `script/DeployThrottleHook.s.sol` written ✓. Deploy (requires step 4 salt + Etherscan key):
-   ```bash
-   forge script script/DeployThrottleHook.s.sol \
-       --rpc-url $SEPOLIA_RPC \
-       --private-key $DEPLOYER_KEY \
-       --broadcast \
-       --verify
-   ```
-- [ ] 6. Pin in `.env`:
-   ```
-   ARBITER_THROTTLE_HOOK=0x<deployed address>
-   ```
-- [ ] 7. Verify the hook address has correct permission bits:
-   ```bash
-   # (a) Compute the low-14-bits flags locally and confirm they match the expected mask:
-   python -c "addr=int('$ARBITER_THROTTLE_HOOK',16); print(hex(addr & 0x3FFF))"
-   # (b) Call PoolManager.initialize(...) with this hook on a throwaway pool and confirm it
-   #     does not revert with HookAddressNotValid.
-   ```
-
-**Warning:** Salt mining can fail if your target permission bits don't match the available
-address space. The mining script needs the correct flag mask — verify the permission flags
-in `contracts/ArbiterThrottleHook.sol` match what `execution/firewall.py::validate_hook_address`
-expects (low 14 bits, `& 0x3FFF`).
+  - [x] e. `ETHERSCAN_API_KEY` — add from etherscan.io/myapikey.
+- [x] 4. `script/HookMiner.s.sol` written and run ✓. Salt mined in 3831 iterations.
+   - `HOOK_SALT=0x0000000000000000000000000000000000000000000000000000000000000ef7`
+   - `ARBITER_THROTTLE_HOOK=0x4Fb70855Af455680075d059AD216a01A161800C0`
+- [x] 5. `script/DeployThrottleHook.s.sol` written and deployed ✓.
+   - Deployed: `0x4Fb70855Af455680075d059AD216a01A161800C0`
+   - Tx: `0x082752540ff417181607fd41d64e54a69306958aee05d6b2304c86e9c22fa67a`
+   - Block: 10775727 (Sepolia)
+- [x] 6. `ARBITER_THROTTLE_HOOK=0x4Fb70855Af455680075d059AD216a01A161800C0` pinned in `.env`.
+- [x] 7. Permission bits verified: `0x4Fb70855...C0 & 0x3FFF = 0xC0 = 192` ✓. Contract verified on Sepolia Etherscan.
 
 ---
 
@@ -151,18 +131,11 @@ The contract already exists at `contracts/ArbiterReceipt.sol`. Deploy script wri
 
 ### What to do
 - [x] 1. `script/DeployArbiterReceipt.s.sol` written ✓.
-- [ ] 2. Deploy:
-   ```bash
-   forge script script/DeployArbiterReceipt.s.sol \
-       --rpc-url $SEPOLIA_RPC \
-       --private-key $DEPLOYER_KEY \
-       --broadcast \
-       --verify
-   ```
-- [ ] 3. Pin in `.env`:
-   ```
-   ARBITER_RECEIPT_NFT=0x<deployed address>
-   ```
+- [x] 2. Deployed ✓.
+   - Address: `0x47D6414fbf582141D4Ce54C3544C14A6057D5a04`
+   - Chain: Sepolia (11155111)
+   - Contract verified on Sepolia Etherscan ✓
+- [x] 3. `ARBITER_RECEIPT_NFT=0x47D6414fbf582141D4Ce54C3544C14A6057D5a04` pinned in `.env`.
 
 ---
 
@@ -379,23 +352,22 @@ It can only be written **after** Steps 3–9 produce real on-chain state.
 ## Summary: Dependency Order
 
 ```
-Step 2 (Funding)
-  └→ Step 3 (Deploy Safe) ✓ DONE
-       └→ Step 8 (Permit2 approvals)
-  └→ Step 4 (Deploy ThrottleHook) ← Foundry setup ✓, missing: HookMiner + deploy scripts
-  └→ Step 5 (Deploy SBT contract)
+Step 1  (AXL nodes)               ✓ DONE
+Step 2  (Funding)                 ✓ DONE (WETH/stETH/WBTC wrapping still needed)
+Step 3  (Deploy Safe)             ✓ DONE — 0xd42C17165aC8A2C69f085FAb5daf8939f983eB21
+Step 4  (Deploy ThrottleHook)     ✓ DONE — 0x4Fb70855Af455680075d059AD216a01A161800C0
+Step 5  (Deploy ArbiterReceipt)   ✓ DONE — 0x47D6414fbf582141D4Ce54C3544C14A6057D5a04
+Step 8  (Permit2 approvals)       script written, needs WETH/stETH/WBTC in Safe first
 
-Step 7 (KeeperHub server setup)
-  └→ Step 6 (Enable KeeperHub Module on Safe)  ← also needs Step 3 ✓
-
-Step 1 (AXL nodes)  ← independent, do first
-
-Steps 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 → Step 9 (E2E live tx)
-  └→ Step 10 (Write KEEPERHUB_FEEDBACK.md with real friction)
-  └→ Step 11 (Deploy public verifier)
-  └→ Step 12 (Write BOUNTY_PROOF.md with real tx hashes)
-  └→ Step 13 (Dress rehearsal)
-  └→ Step 14 (Submit)
+Step 7  (KeeperHub server)        ← NEXT BLOCKER
+  └→ Step 6  (Enable KeeperHub Module on Safe)
+  └→ Step 8  (Run Permit2 approvals)
+  └→ Step 9  (E2E live tx)
+       └→ Step 10 (Real KEEPERHUB_FEEDBACK.md)
+       └→ Step 11 (Deploy public verifier to Vercel)
+       └→ Step 12 (Write BOUNTY_PROOF.md with real tx hashes)
+       └→ Step 13 (Dress rehearsal x3)
+       └→ Step 14 (Submit)
 ```
 
 ## Code Still Needed (AI can write, but blocked on infra)
@@ -404,11 +376,11 @@ Steps 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 → Step 9 (E2E live tx)
 |---|---|---|
 | `scripts/enable_permit2.py` | `scripts/enable_permit2.py` | **Done** ✓ — EIP-712 Safe tx, direct execTransaction |
 | ArbiterThrottleHook Solidity contract | `contracts/ArbiterThrottleHook.sol` | **Done** ✓ — compiles against v4-core v4.0.0 |
-| ArbiterReceipt Solidity contract | `contracts/ArbiterReceipt.sol` | **Done** ✓ — needs deployment |
+| ArbiterReceipt Solidity contract | `contracts/ArbiterReceipt.sol` | **Done** ✓ — deployed `0x47D6414f...5a04` |
 | Foundry project scaffolding | `foundry.toml` (repo root) | **Done** ✓ |
 | `script/HookMiner.s.sol` | `script/HookMiner.s.sol` | **Done** ✓ — run `forge script` to mine salt |
-| `script/DeployThrottleHook.s.sol` | `script/DeployThrottleHook.s.sol` | **Done** ✓ — run after mining salt |
-| `script/DeployArbiterReceipt.s.sol` | `script/DeployArbiterReceipt.s.sol` | **Done** ✓ — run to deploy SBT |
+| `script/DeployThrottleHook.s.sol` | `script/DeployThrottleHook.s.sol` | **Done** ✓ — deployed `0x4Fb70855...00C0` |
+| `script/DeployArbiterReceipt.s.sol` | `script/DeployArbiterReceipt.s.sol` | **Done** ✓ — deployed `0x47D6414f...5a04` |
 | `docs/BOUNTY_PROOF.md` | Not yet created | Needs real tx hashes |
 | `docs/AUDIT_REPRODUCE.md` | Not yet created | Can be written anytime |
 | `docs/SECURITY.md` | Not yet created | Can be written anytime |

@@ -1,66 +1,193 @@
-## Foundry
+# Arbiter Capital
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Autonomous multi-agent DeFi treasury system built for ETHGlobal Open Agents (deadline 2026-05-06).
 
-Foundry consists of:
+Two LangGraph agents (Quant + Patriarch) negotiate swap proposals over a live Gensyn AXL network, reach 2-of-3 multisig consensus, and execute Uniswap v4 swaps through a Gnosis Safe — with every LLM call and decision persisted to 0G decentralised storage.
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+**Bounty targets:** Gensyn AXL ($5k) · 0G Storage ($15k) · KeeperHub Best Use ($4.5k + $500 feedback) · Uniswap v4 Hook ($5k) · Grand Prize
 
-## Documentation
+---
 
-https://book.getfoundry.sh/
+## Architecture
 
-## Usage
+```
+market_injector.py          injects price scenarios
+       |
+  [AXL topic: MARKET_DATA]
+       |
+quant_process.py            LangGraph: ingest → recall → draft → audit → sign (EIP-712)
+       |
+  [AXL topic: PROPOSALS]
+       |
+patriarch_process.py        LangGraph: recheck → evaluate → sign (KeeperHub sim oracle)
+       |
+  [AXL topic: FIREWALL_CLEARED + CONSENSUS_SIGNATURES]
+       |
+execution_process.py        ecrecover 2-of-3 threshold → Safe.execTransaction → Uniswap v4
+       |
+  [Sepolia] ArbiterThrottleHook → PoolManager → swap
+            ArbiterReceipt SBT minted to Safe
 
-### Build
-
-```shell
-$ forge build
+byzantine_watchdog.py       publishes adversarial proposals (A1-A6 attacks) for demo
+monitor_network.py          4-pane God View: AXL stream / Treasury / Audit Chain / Watchdog
 ```
 
-### Test
+All inter-process messages are Pydantic models over Gensyn AXL (SQLite mock in dev, real AXL in demo). Every LLM call is captured as a `LLMContext` artifact written to 0G storage and indexed in ChromaDB for semantic recall.
 
-```shell
-$ forge test
+---
+
+## Deployed Contracts (Sepolia)
+
+| Contract | Address | Etherscan |
+|---|---|---|
+| Gnosis Safe (2-of-3) | `0xd42C17165aC8A2C69f085FAb5daf8939f983eB21` | [view](https://sepolia.etherscan.io/address/0xd42C17165aC8A2C69f085FAb5daf8939f983eB21) |
+| ArbiterThrottleHook | `0x4Fb70855Af455680075d059AD216a01A161800C0` | [view](https://sepolia.etherscan.io/address/0x4Fb70855Af455680075d059AD216a01A161800C0) |
+| ArbiterReceipt SBT | `0x47D6414fbf582141D4Ce54C3544C14A6057D5a04` | [view](https://sepolia.etherscan.io/address/0x47D6414fbf582141D4Ce54C3544C14A6057D5a04) |
+
+---
+
+## Setup
+
+### Prerequisites
+
+- Python 3.11+, Node 18+
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) (`forge`, `cast`)
+- [uv](https://github.com/astral-sh/uv) for Python package management
+
+### Install
+
+```bash
+# Clone
+git clone https://github.com/jmberean/arbiter-capital.git
+cd arbiter-capital
+
+# Python venv (Windows)
+python -m venv .venv
+.venv\Scripts\activate
+uv pip install -r requirements.txt
+
+# Foundry dependencies (submodules)
+git submodule update --init --recursive
 ```
 
-### Format
+### Environment
 
-```shell
-$ forge fmt
+Copy `.env.example` to `.env` and fill in the required values:
+
+```bash
+cp .env.example .env
 ```
 
-### Gas Snapshots
+Key variables:
 
-```shell
-$ forge snapshot
+```env
+# RPC + keys
+ETH_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/<your-key>
+SEPOLIA_RPC=https://eth-sepolia.g.alchemy.com/v2/<your-key>
+QUANT_PRIVATE_KEY=0x...
+PATRIARCH_PRIVATE_KEY=0x...
+EXECUTOR_PRIVATE_KEY=0x...
+
+# Deployed addresses (already set for Sepolia)
+SAFE_ADDRESS=0xd42C17165aC8A2C69f085FAb5daf8939f983eB21
+ARBITER_THROTTLE_HOOK=0x4Fb70855Af455680075d059AD216a01A161800C0
+ARBITER_RECEIPT_NFT=0x47D6414fbf582141D4Ce54C3544C14A6057D5a04
+
+# AXL nodes (5 local nodes for demo)
+AXL_NODE_URL_QUANT=http://127.0.0.1:9001
+AXL_NODE_URL_PATRIARCH=http://127.0.0.1:9002
+AXL_NODE_URL_EXEC=http://127.0.0.1:9003
+AXL_NODE_URL_KEEPERHUB=http://127.0.0.1:9004
+AXL_NODE_URL_WATCHDOG=http://127.0.0.1:9005
+DEMO_MODE=1
 ```
 
-### Anvil
+---
 
-```shell
-$ anvil
+## Running
+
+### Start AXL nodes (required for DEMO_MODE=1)
+
+```bash
+bash scripts/setup_axl.sh
 ```
 
-### Deploy
+### Run all processes (each in its own terminal)
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+```bash
+python quant_process.py
+python patriarch_process.py
+python execution_process.py
+python byzantine_watchdog.py
+python monitor_network.py     # God View — open this last
 ```
 
-### Cast
+### Inject a market scenario
 
-```shell
-$ cast <subcommand>
+```bash
+python market_injector.py flash_crash_eth
+# Scenarios: flash_crash_eth | pendle_yield_arbitrage | protocol_hack | gas_war | lst_expansion
 ```
 
-### Help
+### Full demo run (automated)
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+```bash
+python scripts/demo_run.py
+```
+
+---
+
+## Tests
+
+```bash
+pytest tests/ -v
+python scripts/check_bounty_compliance.py   # must exit 0 before submission
+```
+
+---
+
+## Smart Contract Deployment (Foundry)
+
+Contracts are already deployed on Sepolia. To redeploy:
+
+```bash
+# 1. Mine CREATE2 salt for ThrottleHook (takes seconds)
+forge script script/HookMiner.s.sol --rpc-url sepolia -vvv
+# Copy HOOK_SALT and ARBITER_THROTTLE_HOOK into .env
+
+# 2. Deploy ThrottleHook
+forge script script/DeployThrottleHook.s.sol \
+    --rpc-url sepolia --private-key $DEPLOYER_KEY --broadcast --verify
+
+# 3. Deploy ArbiterReceipt SBT
+forge script script/DeployArbiterReceipt.s.sol \
+    --rpc-url sepolia --private-key $DEPLOYER_KEY --broadcast --verify
+
+# Or use the helper script (Windows PowerShell):
+.\scripts\deploy.ps1 -SkipVerifyHook
+```
+
+---
+
+## Key Docs
+
+| Doc | Purpose |
+|---|---|
+| `docs/MANUAL_ACTION_REQUIRED.md` | Go-live checklist with dependency order |
+| `docs/SYSTEM_DESIGN.md` | Full architecture and design decisions |
+| `docs/TECHNICAL_ROADMAP.md` | Step-by-step implementation roadmap |
+| `docs/KEEPERHUB_FEEDBACK.md` | KeeperHub builder feedback (bounty submission) |
+
+---
+
+## Audit Chain
+
+Every decision is cryptographically chained and replayable:
+
+```bash
+# Verify the full audit chain
+python verify_audit.py --walk-from-head
+
+# Replay a specific LLM decision from 0G storage
+python scripts/replay_decision.py <receipt_hash>
 ```
