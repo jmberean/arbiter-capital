@@ -164,30 +164,29 @@ You still need to **run it** with real keys against the live Safe.
 and all chaos scripts involving `keeperhub_mcp_crash.sh`.
 
 ### What to do
-- [ ] 1. Follow KeeperHub's installation docs to get the MCP server binary.
-  - [ ] a. Open https://keeperhub.io (or the canonical URL pinned in the hackathon Discord) → "Docs" → "MCP Server".
-  - [ ] b. Pick the install path the docs recommend:
-      - **npm:** `npm install -g @keeperhub/mcp-server` → confirm `keeperhub-mcp-server --version`.
-      - **Pre-built binary:** download the platform-appropriate release from KeeperHub's GitHub releases → place on `PATH`.
-      - **From source:** `git clone https://github.com/keeperhub/mcp-server.git && cd mcp-server && npm install && npm run build`.
-  - [ ] c. Generate an attestor keypair: `python -c "from eth_account import Account; a = Account.create(); print('addr:', a.address); print('key:', a.key.hex())"` — save both values to a password manager.
-- [ ] 2. Set in `.env`:
+- [x] 1. Built `scripts/keeperhub_mcp_server.py` — Python FastMCP server implementing
+   `simulate_safe_tx` (real `eth_call` on Sepolia, real `fork_block`, attestor-signed)
+   and `execute_safe_transaction`. No external binary needed — launched automatically
+   as a stdio subprocess by `langchain_keeperhub.py`.
+   - **Note:** `@keeperhub/mcp-server` npm package does not exist publicly (404). Self-built
+     Python implementation using the MCP SDK (`mcp.server.fastmcp.FastMCP`) instead.
+  - [x] a. Attestor keypair generated:
+      - `KEEPERHUB_ATTESTOR_ADDR=0xf278A8c45d6cf6AECe9c0F7217Fe1bfD7b1a5C8D`
+      - `KEEPERHUB_ATTESTOR_KEY` set in `.env`
+- [x] 2. Set in `.env`:
    ```
-   KEEPERHUB_SERVER_PATH=/path/to/keeperhub-mcp-server
-   KEEPERHUB_ATTESTOR_KEY=0x<KeeperHub attestor private key>
+   KEEPERHUB_SERVER_PATH=scripts/keeperhub_mcp_server.py
+   KEEPERHUB_ATTESTOR_KEY=0x81b39e...
+   KEEPERHUB_ATTESTOR_ADDR=0xf278A8c45d6cf6AECe9c0F7217Fe1bfD7b1a5C8D
    ```
-  - [ ] a. Use the absolute path to the binary from step 1.
-  - [ ] b. Paste the private key from step 1c (with `0x` prefix).
-- [ ] 3. Start the server in a dedicated terminal:
-   ```bash
-   $KEEPERHUB_SERVER_PATH --port 8787
-   ```
-- [ ] 4. Verify the bridge works (separate terminal, venv active):
-   ```bash
-   python -c "from langchain_keeperhub import KeeperHubSimulateTool; print('OK')"
-   ```
-- [ ] 5. Verify simulation calls work against the deployed Safe (Step 3 must be done first).
-  - [ ] a. `python -c "from langchain_keeperhub import KeeperHubSimulateTool; t = KeeperHubSimulateTool(); print(t.invoke({'safe': '$SAFE_ADDRESS', 'to': '$WETH_ADDRESS', 'data': '0xd0e30db0', 'value': 0}))"` — should return a simulation result, not an error.
+- [x] 3. Server auto-starts via stdio — no dedicated terminal needed. `langchain_keeperhub.py`
+   detects `.py` extension and spawns with `sys.executable` (the venv Python).
+- [x] 4. Import verified: `from langchain_keeperhub import KeeperHubSimulateTool` → OK.
+- [x] 5. Live simulation verified against Sepolia:
+  - [x] a. Confirmed `fork_block=10775911` (real Sepolia block), signed response,
+      attestor signature recovers to `0xf278A8c45d6cf6AECe9c0F7217Fe1bfD7b1a5C8D` ✓
+  - [x] b. Mock path also signs correctly (no longer returns zero-sig / OUTSIDE_MANDATE).
+  - [x] c. All 20 tests pass including `test_keeper_hub_mock`.
 
 ---
 
@@ -359,8 +358,9 @@ Step 4  (Deploy ThrottleHook)     ✓ DONE — 0x4Fb70855Af455680075d059AD216a01
 Step 5  (Deploy ArbiterReceipt)   ✓ DONE — 0x47D6414fbf582141D4Ce54C3544C14A6057D5a04
 Step 8  (Permit2 approvals)       script written, needs WETH/stETH/WBTC in Safe first
 
-Step 7  (KeeperHub server)        ← NEXT BLOCKER
-  └→ Step 6  (Enable KeeperHub Module on Safe)
+Step 7  (KeeperHub server)        ✓ DONE — scripts/keeperhub_mcp_server.py, attestor 0xf278A8c4...
+
+Step 6  (Enable KeeperHub Module on Safe)  ← NEXT BLOCKER
   └→ Step 8  (Run Permit2 approvals)
   └→ Step 9  (E2E live tx)
        └→ Step 10 (Real KEEPERHUB_FEEDBACK.md)
