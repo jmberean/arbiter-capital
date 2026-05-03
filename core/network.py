@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import sqlite3
+import threading
 import time
 from typing import Dict, List, Optional
 
@@ -27,6 +28,9 @@ from core.crypto import envelope_digest, sign_digest, recover_signer
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "axl_network.db")
 logger = logging.getLogger("AXLNetwork")
+
+# Topics that warrant INFO-level logging when received (aids diagnosis)
+_IMPORTANT_TOPICS = {"PROPOSALS", "FIREWALL_CLEARED", "CONSENSUS_SIGNATURES", "EXECUTION_SUCCESS"}
 
 
 def _load_node_key() -> Optional[bytes]:
@@ -59,6 +63,8 @@ class MockAXLNode:
         self.use_live_axl = self.axl_url is not None
         self.demo_mode = os.getenv("DEMO_MODE") == "1"
         self._inbox: Dict[str, List[Dict]] = {}
+        self._inbox_lock = threading.Lock()
+        self._drain_stop_evt = threading.Event()
 
         self._node_key = _load_node_key()
         self._node_addr = (
@@ -74,6 +80,7 @@ class MockAXLNode:
 
         if self.use_live_axl:
             logger.info(f"Node {node_id} initialized with LIVE AXL at {self.axl_url}")
+            self._start_background_drain()
         else:
             logger.info(f"Node {node_id} initialized in MOCK (SQLite) mode — DEV ONLY.")
         if self._node_key is None:
@@ -218,10 +225,12 @@ class MockAXLNode:
                         "envelope": data.get("envelope", {}),
                     }
                     verified = self._verify_envelope(msg["envelope"])
-                    logger.debug("AXL recv: topic=%s sender=%s verified=%s",
-                                 msg_topic, msg.get("sender", "?")[:16], verified)
+                    level = logging.INFO if msg_topic in _IMPORTANT_TOPICS else logging.DEBUG
+                    logger.log(level, "AXL recv: topic=%s sender=%s verified=%s",
+                               msg_topic, msg.get("sender", "?")[:16], verified)
                     if verified:
-                        self._inbox.setdefault(msg_topic, []).append(msg)
+                        with self._inbox_lock:
+                            self._inbox.setdefault(msg_topic, []).append(msg)
                     else:
                         logger.warning("AXL recv: dropping unverified message topic=%s sender=%s",
                                        msg_topic, msg.get("sender", "?")[:16])
@@ -229,11 +238,31 @@ class MockAXLNode:
                 logger.warning("AXL drain error: %s", e)
                 break
 
+    def _start_background_drain(self) -> None:
+        """Continuously drain the AXL /recv queue in a background thread.
+
+        This ensures messages are captured the moment they arrive, even when
+        the main processing loop is blocked inside a long LangGraph call.
+        Without this, messages with short AXL TTLs expire before the next
+        subscribe() poll cycle.
+        """
+        def _loop():
+            while not self._drain_stop_evt.is_set():
+                try:
+                    self._drain_axl_inbox()
+                except Exception as e:
+                    logger.warning("Background drain error: %s", e)
+                self._drain_stop_evt.wait(0.5)
+
+        t = threading.Thread(target=_loop, daemon=True, name=f"axl-drain-{self.node_id}")
+        t.start()
+        logger.info(f"AXL background drain thread started for {self.node_id}")
+
     def subscribe(self, topic: str, last_id: int = 0) -> List[Dict]:
         if self.use_live_axl:
             try:
-                self._drain_axl_inbox()
-                return self._inbox.pop(topic, [])
+                with self._inbox_lock:
+                    return self._inbox.pop(topic, [])
             except Exception as e:
                 logger.warning(f"AXL subscribe failed: {e}. Falling back to SQLite.")
 
@@ -262,7 +291,8 @@ class MockAXLNode:
 
     def clear_network(self):
         if self.use_live_axl:
-            self._inbox.clear()
+            with self._inbox_lock:
+                self._inbox.clear()
             return
         with sqlite3.connect(DB_PATH) as conn:
             conn.execute("DELETE FROM messages")
