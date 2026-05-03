@@ -37,5 +37,8 @@ broadcast/
 axl-node.exe
 *.exe
 
+# Demo materials (local only, not for GitHub)
+demo/
+
 # Logs
 *.log
