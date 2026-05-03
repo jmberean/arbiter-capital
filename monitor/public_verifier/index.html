@@ -717,23 +717,34 @@ function dashboard() {
             const neg = (this.data.negotiations || []).find(n => n.proposal_id === pid);
             const sessionTs = neg ? (neg.session_start_ts || 0) : 0;
 
-            // Only show messages from the current session; drop adversary, heartbeats, raw oracle requests
+            // Only show messages from the current session; drop heartbeats and raw oracle requests.
+            // NOTE: do NOT filter by sender — in SQLite mock mode every node gossips every message,
+            // so the feed query's MAX(id) may return Adversary_Node_Z as sender for a legitimate
+            // Patriarch message. Filter adversary involvement by signer_id (for CONSENSUS_SIGNATURES)
+            // and by topic/content, not by who happened to gossip last.
             const SKIP_TOPICS = new Set(['HEARTBEAT', 'SIM_ORACLE_REQUEST', 'SIM_ORACLE_RESULT',
                                           'MARKET_SNAPSHOTS', 'FIREWALL_CLEARED']);
-            const SKIP_SENDERS = new Set(['Adversary_Node_Z']);
 
             const msgs = (this.data.feed || []).filter(m => {
                 if (m.payload.proposal_id !== pid && m.payload.root_proposal_id !== pid) return false;
                 if (SKIP_TOPICS.has(m.topic)) return false;
-                if (SKIP_SENDERS.has(m.sender)) return false;
                 if (sessionTs && m.timestamp < sessionTs) return false;
+                // For signatures, drop if the actual signer is the adversary
+                if (m.topic === 'CONSENSUS_SIGNATURES') {
+                    const sid = (m.payload.signer_id || '').toLowerCase();
+                    if (sid.includes('adversary') || sid.includes('watchdog')) return false;
+                }
                 return true;
             });
 
-            // Deduplicate: same topic + same sender role (not per-node gossip copy)
+            // Deduplicate by content: same topic + same signer role + same rationale prefix.
+            // This collapses gossip copies (same payload, different sender) into one entry.
             const seen = new Map();
             for (const m of msgs) {
-                const key = m.topic + '|' + this._senderRole(m.sender) + '|' + (m.payload.rationale || '').slice(0, 40);
+                const signerKey = m.topic === 'CONSENSUS_SIGNATURES'
+                    ? this._senderRole(m.payload.signer_id || m.payload.signer_address || m.sender)
+                    : this._senderRole(m.sender);
+                const key = m.topic + '|' + signerKey + '|' + (m.payload.rationale || '').slice(0, 40);
                 if (!seen.has(key)) seen.set(key, m);
             }
             return Array.from(seen.values()).sort((a, b) => a.timestamp - b.timestamp);
@@ -742,11 +753,12 @@ function dashboard() {
         _senderRole(sender) {
             if (!sender) return '';
             const s = sender.toLowerCase();
-            if (s.includes('quant'))     return 'quant';
-            if (s.includes('patriarch')) return 'patriarch';
-            if (s.includes('exec'))      return 'executor';
-            if (s.includes('adversary')) return 'adversary';
-            return sender;
+            if (s.includes('quant'))                       return 'quant';
+            if (s.includes('patriarch'))                   return 'patriarch';
+            if (s.includes('exec'))                        return 'executor';
+            if (s.includes('adversary') || s.includes('watchdog')) return 'adversary';
+            if (s.includes('market') || s.includes('god')) return 'market';
+            return 'unknown';
         },
 
         agentName(msg) {
