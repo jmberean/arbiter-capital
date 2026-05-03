@@ -3,372 +3,867 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arbiter Capital — Operations Dashboard</title>
+    <title>Arbiter Capital — Live Agent Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-        
         :root {
-            --glow-green: 0 0 10px rgba(34, 197, 94, 0.4);
-            --glow-blue: 0 0 10px rgba(59, 130, 246, 0.4);
+            --bg:        #03060f;
+            --surface:   rgba(10, 16, 30, 0.85);
+            --border:    rgba(255,255,255,0.07);
+            --blue:      #3b82f6;
+            --amber:     #f59e0b;
+            --emerald:   #10b981;
+            --rose:      #f43f5e;
+            --violet:    #8b5cf6;
+            --text:      #e8edf5;
+            --muted:     #64748b;
         }
+
+        * { box-sizing: border-box; }
 
         body {
-            background-color: #050505;
-            color: #e2e8f0;
+            background-color: var(--bg);
+            color: var(--text);
             font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
+
+        /* Circuit grid */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -20%; left: -10%;
+            width: 60%; height: 60%;
+            background: radial-gradient(ellipse, rgba(59,130,246,0.04) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .ambient-rose {
+            position: fixed;
+            bottom: -20%; right: -10%;
+            width: 50%; height: 50%;
+            background: radial-gradient(ellipse, rgba(244,63,94,0.03) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        main, header { position: relative; z-index: 1; }
 
         .mono { font-family: 'JetBrains Mono', monospace; }
+        .display { font-family: 'Syne', sans-serif; }
 
-        .dashboard-card {
-            background: rgba(17, 24, 39, 0.7);
-            border: 1px solid #1f2937;
-            backdrop-filter: blur(8px);
+        .glass {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
         }
 
-        .node-online {
-            box-shadow: var(--glow-green);
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        /* Scenario card */
+        .scenario-card {
+            transition: border-color 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .scenario-card:hover { border-color: rgba(255,255,255,0.14) !important; }
+
+        /* Card accent variants */
+        .card-active   { border-left: 2px solid rgba(59,130,246,0.7) !important; }
+        .card-executed { border-left: 2px solid rgba(16,185,129,0.7) !important; background: rgba(16,185,129,0.03) !important; }
+        .card-rejected { border-left: 2px solid rgba(245,158,11,0.6) !important; }
+        .card-attack   { border-left: 3px solid #f43f5e !important; background: rgba(244,63,94,0.04) !important; box-shadow: 0 0 24px rgba(244,63,94,0.07); }
+
+        /* Pipeline stage states */
+        .stage-pending  { background: transparent; border-color: rgba(255,255,255,0.08); color: var(--muted); }
+        .stage-active   { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.5); color: #93c5fd; }
+        .stage-done     { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: #6ee7b7; }
+        .stage-blocked  { background: rgba(244,63,94,0.1); border-color: rgba(244,63,94,0.3); color: #fb7185; }
+
+        /* KPI chips */
+        .kpi-chip {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
         }
 
-        .log-entry:hover {
-            background: rgba(31, 41, 55, 0.5);
+        /* Node dot pulse */
+        .dot-live { animation: dotPulse 2s ease-in-out infinite; }
+        @keyframes dotPulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+            50%      { box-shadow: 0 0 0 4px rgba(16,185,129,0); }
         }
 
-        /* Scrollbar styling */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-        @keyframes pulse-soft {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        /* Signing pulse on card status dot */
+        .dot-signing { animation: signingPulse 1.4s ease-in-out infinite; }
+        @keyframes signingPulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.5); }
+            50%      { box-shadow: 0 0 0 5px rgba(59,130,246,0); }
         }
-        .animate-pulse-soft { animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        @keyframes softBlink {
+            0%,100% { opacity:1; }
+            50%      { opacity:0.4; }
+        }
+        .blink { animation: softBlink 1.8s ease-in-out infinite; }
+
+        @keyframes ticker {
+            0%   { opacity:0.3; }
+            50%  { opacity:0.7; }
+            100% { opacity:0.3; }
+        }
+        .ticker { animation: ticker 3s ease-in-out infinite; }
+
+        /* Card slide-in */
+        .scenario-card { animation: cardIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        [x-cloak] { display:none !important; }
     </style>
 </head>
 <body x-data="dashboard()">
-    <!-- Top Header -->
-    <header class="h-16 border-b border-gray-800 bg-black flex items-center px-6 sticky top-0 z-50">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
-                <i class="fas fa-shield-halved text-white text-sm"></i>
+<div class="ambient-rose"></div>
+
+<!-- ═══════════════════════ HEADER ═══════════════════════ -->
+<header class="sticky top-0 z-50 border-b border-white/[0.06] bg-[#03060f]/90 backdrop-blur-xl">
+    <div class="max-w-[1600px] mx-auto px-6 h-[60px] flex items-center gap-6">
+
+        <div class="flex items-center gap-3 shrink-0">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
+                <i class="fas fa-shield-halved text-blue-400 text-sm"></i>
             </div>
             <div>
-                <h1 class="font-bold text-lg tracking-tight">ARBITER CAPITAL</h1>
-                <p class="text-[10px] text-gray-500 mono uppercase tracking-widest leading-none">Autonomous Family Office • v5.0</p>
+                <div class="display font-bold text-sm tracking-wide leading-none">ARBITER CAPITAL</div>
+                <div class="mono text-[9px] text-slate-500 tracking-widest mt-0.5">5-AGENT AUTONOMOUS FUND · GENSYN AXL + 0G</div>
             </div>
         </div>
 
-        <div class="ml-auto flex items-center gap-6">
-            <div class="text-right">
-                <p class="text-[10px] text-gray-500 mono uppercase">Treasury Safe</p>
-                <p class="text-xs text-blue-400 mono" x-text="data.safe_address">0x...</p>
+        <!-- KPI chips -->
+        <div class="flex items-center gap-2 mx-auto">
+            <div class="kpi-chip rounded-lg px-4 py-1.5 text-center">
+                <div class="mono text-[10px] text-slate-500 uppercase tracking-wider">Scenarios</div>
+                <div class="display font-bold text-base text-blue-400 leading-tight" x-text="data.negotiations.length">0</div>
             </div>
-            <div class="flex items-center gap-2 bg-gray-900 border border-gray-800 px-3 py-1.5 rounded-full">
-                <div class="w-2 h-2 rounded-full" :class="connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></div>
-                <span class="text-[10px] font-bold mono" x-text="connected ? 'LIVE NETWORK' : 'DISCONNECTED'"></span>
+            <div class="kpi-chip rounded-lg px-4 py-1.5 text-center">
+                <div class="mono text-[10px] text-slate-500 uppercase tracking-wider">Executed</div>
+                <div class="display font-bold text-base text-emerald-400 leading-tight" x-text="kpis.executed">0</div>
             </div>
-            <a href="/verifier" class="text-xs bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-700 transition-colors">
-                <i class="fas fa-search-nodes mr-2"></i>Audit Chain
+            <div class="kpi-chip rounded-lg px-4 py-1.5 text-center">
+                <div class="mono text-[10px] text-slate-500 uppercase tracking-wider">Attacks Blocked</div>
+                <div class="display font-bold text-base text-rose-400 leading-tight" x-text="kpis.attacks">0</div>
+            </div>
+            <div class="kpi-chip rounded-lg px-4 py-1.5 text-center">
+                <div class="mono text-[10px] text-slate-500 uppercase tracking-wider">0G Proofs</div>
+                <div class="display font-bold text-base text-violet-400 leading-tight" x-text="receipts.length">0</div>
+            </div>
+        </div>
+
+        <!-- Right controls -->
+        <div class="flex items-center gap-4 shrink-0">
+            <div class="text-right hidden xl:block">
+                <div class="mono text-[9px] text-slate-500 uppercase tracking-wider">Treasury Safe</div>
+                <div class="mono text-[10px] text-blue-400" x-text="truncate(data.safe_address, 20)">0x…</div>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-full border"
+                 :class="connected ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-rose-500/30 bg-rose-500/5'">
+                <div class="w-1.5 h-1.5 rounded-full"
+                     :class="connected ? 'bg-emerald-400 dot-live' : 'bg-rose-500'"></div>
+                <span class="mono text-[10px] font-medium"
+                      :class="connected ? 'text-emerald-400' : 'text-rose-400'"
+                      x-text="connected ? 'LIVE' : 'OFFLINE'"></span>
+            </div>
+            <a href="/verifier" class="mono text-[10px] text-slate-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg transition-all">
+                Audit Chain <i class="fas fa-arrow-right ml-1 text-[9px]"></i>
             </a>
         </div>
-    </header>
+    </div>
+</header>
 
-    <main class="p-6 grid grid-cols-12 gap-6 max-w-[1600px] mx-auto">
-        
-        <!-- Left: Node Status & Active Negotiations -->
-        <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
-            
-            <!-- Node Matrix -->
-            <section class="dashboard-card rounded-xl p-5">
-                <h2 class="text-xs font-bold text-gray-500 mono uppercase tracking-wider mb-4">Node Matrix</h2>
-                <div class="grid grid-cols-2 gap-3">
-                    <template x-for="node in data.nodes" :key="node.node_id">
-                        <div class="bg-black/40 border border-gray-800 p-3 rounded-lg relative overflow-hidden group">
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="text-xs font-semibold mono" x-text="formatNodeName(node.node_id)"></span>
-                                <div class="w-1.5 h-1.5 rounded-full" :class="node.alive ? 'bg-green-500 node-online' : 'bg-gray-700'"></div>
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <div class="flex justify-between text-[10px]">
-                                    <span class="text-gray-500">Status</span>
-                                    <span class="text-gray-300" x-text="node.status"></span>
-                                </div>
-                                <div class="flex justify-between text-[10px]">
-                                    <span class="text-gray-500">Latency</span>
-                                    <span class="text-gray-300" x-text="formatLatency(node.last_seen)">--</span>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </section>
+<!-- ═══════════════════════ MAIN ═══════════════════════ -->
+<main class="max-w-[1600px] mx-auto px-6 py-5 flex gap-5" style="height: calc(100vh - 60px);">
 
-            <!-- Active Negotiations -->
-            <section class="dashboard-card rounded-xl p-5 flex-1 overflow-y-auto max-h-[500px]">
-                <h2 class="text-xs font-bold text-gray-500 mono uppercase tracking-wider mb-4">Live Negotiations</h2>
-                <div class="space-y-4">
-                    <template x-if="data.negotiations.length === 0">
-                        <div class="text-center py-10">
-                            <i class="fas fa-tower-broadcast text-gray-800 text-3xl mb-3"></i>
-                            <p class="text-xs text-gray-600 mono">Waiting for Proposal...</p>
-                        </div>
-                    </template>
-                    <template x-for="neg in data.negotiations" :key="neg.proposal_id">
-                        <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-4 cursor-pointer hover:border-blue-500/50 transition-all" @click="selectedPid = neg.proposal_id">
-                            <div class="flex justify-between items-center mb-3">
-                                <span class="text-xs font-bold mono text-blue-400" x-text="neg.proposal_id"></span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full mono uppercase border" 
-                                      :class="statusClasses(neg.status)"
-                                      x-text="neg.status"></span>
-                            </div>
-                            
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-center text-[10px] mono text-gray-400">
-                                    <span>Consensus Progress</span>
-                                    <span x-text="neg.signatures + '/2 Signatures'"></span>
-                                </div>
-                                <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-                                    <div class="h-full bg-blue-500 transition-all duration-500" :style="'width: ' + (neg.signatures/2*100) + '%'"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </section>
-        </div>
+    <!-- ── LEFT: Trade Queue ── -->
+    <div class="flex flex-col" style="flex: 0 0 63%; height: 100%;">
+        <div class="glass rounded-2xl flex flex-col overflow-hidden" style="height:100%;">
 
-        <!-- Center: Message Feed (The "Useful" Part) -->
-        <div class="col-span-12 lg:col-span-8 flex flex-col gap-6">
-            
-            <!-- Real-time Packet Log -->
-            <section class="dashboard-card rounded-xl flex flex-col h-[600px] overflow-hidden">
-                <div class="p-5 border-b border-gray-800 flex justify-between items-center bg-gray-900/30">
-                    <h2 class="text-xs font-bold text-gray-500 mono uppercase tracking-wider">AXL Network Traffic</h2>
-                    <span class="text-[10px] text-blue-500 mono animate-pulse-soft">● CAPTURING_P2P_PACKETS</span>
-                </div>
-                
-                <div class="flex-1 overflow-y-auto mono text-[11px] p-2 bg-[#080808]">
-                    <template x-for="msg in data.feed" :key="msg.id">
-                        <div class="log-entry flex flex-col py-2 px-3 border-b border-gray-900 transition-all group cursor-pointer" @click="selectedMsg = msg">
-                            <div class="grid grid-cols-12 gap-2 w-full">
-                                <span class="col-span-2 text-gray-600" x-text="formatTime(msg.timestamp)"></span>
-                                <span class="col-span-3 font-bold uppercase" :class="topicColor(msg.topic)" x-text="friendlyEvent(msg.topic)"></span>
-                                <span class="col-span-2 text-blue-400 opacity-80" x-text="formatNodeName(msg.sender)"></span>
-                                <span class="col-span-5 text-gray-400 truncate group-hover:text-gray-200" x-text="summarizePayload(msg)"></span>
-                            </div>
-                            <template x-if="msg.payload.rationale">
-                                <div class="mt-1 pl-12 text-blue-300/60 italic" x-text="'\"' + truncate(msg.payload.rationale, 120) + '\"'"></div>
-                            </template>
-                        </div>
-                    </template>
-                </div>
-            </section>
-
-            <!-- 0G Hash-Chain Visualization -->
-            <section class="dashboard-card rounded-xl p-5">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xs font-bold text-gray-500 mono uppercase tracking-wider">0G Layer 1 Memory Chain</h2>
-                    <span class="text-[10px] text-gray-600 mono">Head: <span class="text-gray-400" x-text="truncate(head, 24)">--</span></span>
-                </div>
-                
-                <div class="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-                    <template x-for="receipt in receipts" :key="receipt.id">
-                        <div class="flex-shrink-0 w-48 bg-gray-900/80 border border-gray-800 rounded-lg p-3 relative group hover:border-blue-500/50 transition-all">
-                            <div class="text-[9px] text-blue-500 font-bold mono mb-1" x-text="receipt.type"></div>
-                            <div class="text-[10px] text-gray-400 mono truncate mb-2" x-text="receipt.id"></div>
-                            <div class="flex justify-between items-center">
-                                <div class="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
-                                <span class="text-[9px] text-gray-600 mono" x-text="formatRelTime(receipt.ts)"></span>
-                            </div>
-                            <!-- Connector line -->
-                            <div class="absolute -right-4 top-1/2 w-4 h-[1px] bg-gray-800"></div>
-                        </div>
-                    </template>
-                </div>
-            </section>
-        </div>
-    </main>
-
-    <!-- Detailed View Overlay (Modal-ish) -->
-    <div x-show="selectedMsg" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm" x-cloak>
-        <div class="bg-gray-900 border border-gray-700 rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl" @click.away="selectedMsg = null">
-            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
-                <h3 class="text-xs font-bold mono uppercase tracking-widest text-blue-500" x-text="'Packet Detail: ' + (selectedMsg?.topic || '')"></h3>
-                <button @click="selectedMsg = null" class="text-gray-500 hover:text-white"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="p-6 overflow-y-auto">
-                <div class="mb-6">
-                    <p class="text-[10px] text-gray-500 mono uppercase mb-2">Sender Rationale / Logic</p>
-                    <div class="bg-black/50 p-4 rounded border border-gray-800 text-sm leading-relaxed text-blue-100 italic" 
-                         x-text="selectedMsg?.payload?.rationale || 'No rationale provided in this packet payload.'"></div>
-                </div>
+            <!-- Panel header -->
+            <div class="px-5 py-3.5 border-b border-white/[0.06] flex items-center justify-between shrink-0">
                 <div>
-                    <p class="text-[10px] text-gray-500 mono uppercase mb-2">Full Payload JSON</p>
-                    <pre class="bg-black/50 p-4 rounded border border-gray-800 text-[10px] text-green-400 overflow-x-auto" x-text="JSON.stringify(selectedMsg?.payload, null, 2)"></pre>
+                    <h2 class="display font-semibold text-sm">Trade Queue</h2>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Each scenario — from market signal to on-chain execution</p>
                 </div>
+                <span class="mono text-[10px] blink flex items-center gap-1.5"
+                      :class="connected ? 'text-blue-400' : 'text-slate-600'">
+                    <span class="w-1.5 h-1.5 rounded-full inline-block"
+                          :class="connected ? 'bg-blue-400' : 'bg-slate-600'"></span>
+                    <span x-text="activeNegotiations().length + ' active'"></span>
+                </span>
+            </div>
+
+            <!-- Scrollable queue -->
+            <div class="flex-1 overflow-y-auto px-4 py-4">
+
+                <!-- ── ACTIVE SCENARIOS ── -->
+                <div class="space-y-3">
+                    <template x-if="activeNegotiations().length === 0">
+                        <div class="flex flex-col items-center justify-center h-40 gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
+                                <i class="fas fa-tower-broadcast text-slate-600 text-lg"></i>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-slate-500 ticker">Waiting for market signal…</p>
+                                <p class="mono text-[10px] text-slate-700 mt-1">Active scenarios will appear here</p>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-for="neg in activeNegotiations()" :key="neg.proposal_id">
+                        <div class="scenario-card glass rounded-xl p-4"
+                             :class="cardAccent(neg)"
+                             @click="selectedPid = neg.proposal_id">
+
+                            <!-- Top row -->
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-2 h-2 rounded-full shrink-0" :class="statusDotClass(neg)"></div>
+                                    <span class="mono text-[10px] text-slate-500">Scenario</span>
+                                    <span class="mono text-[11px] font-medium text-slate-200" x-text="truncate(neg.proposal_id, 18)"></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="mono text-[9px] text-slate-600" x-text="formatRelTime(neg.ts)"></span>
+                                    <span class="mono text-[10px] px-2 py-0.5 rounded-full border font-medium"
+                                          :class="statusBadgeClass(neg.status)"
+                                          x-text="statusLabel(neg.status)"></span>
+                                </div>
+                            </div>
+
+                            <!-- Trade info -->
+                            <template x-if="neg.asset_in">
+                                <div class="flex items-center gap-2 mb-3 pl-[18px]">
+                                    <span class="display font-bold text-xl text-white" x-text="formatAmount(neg)"></span>
+                                    <span class="mono text-xs text-slate-300 font-medium" x-text="neg.asset_in"></span>
+                                    <i class="fas fa-arrow-right text-slate-600 text-xs mx-0.5"></i>
+                                    <span class="mono text-xs text-slate-300 font-medium" x-text="neg.asset_out"></span>
+                                </div>
+                            </template>
+
+                            <!-- Pipeline stages -->
+                            <div class="flex gap-1 mb-3">
+                                <template x-for="stage in pipelineStages(neg)" :key="stage.label">
+                                    <div class="border rounded-md px-2 py-1 text-[9px] mono flex-1 text-center transition-all"
+                                         :class="stage.cls" x-text="stage.label"></div>
+                                </template>
+                            </div>
+
+                            <!-- Agent rationales -->
+                            <template x-if="neg.quant_rationale">
+                                <div class="flex gap-2 mb-2 pl-[2px]">
+                                    <div class="w-5 h-5 rounded-md bg-blue-500/10 border border-blue-500/25 flex items-center justify-center shrink-0 mt-0.5">
+                                        <i class="fas fa-brain text-blue-400 text-[8px]"></i>
+                                    </div>
+                                    <div>
+                                        <div class="mono text-[9px] text-blue-400 mb-0.5">Quant Analyst</div>
+                                        <p class="text-[11px] text-slate-400 leading-relaxed" x-text="truncateRationale(neg.quant_rationale)"></p>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="neg.guardian_rationale && neg.guardian_rationale !== neg.quant_rationale">
+                                <div class="flex gap-2 mb-2 pl-[2px]">
+                                    <div class="w-5 h-5 rounded-md bg-amber-500/10 border border-amber-500/25 flex items-center justify-center shrink-0 mt-0.5">
+                                        <i class="fas fa-shield-halved text-amber-400 text-[8px]"></i>
+                                    </div>
+                                    <div>
+                                        <div class="mono text-[9px] text-amber-400 mb-0.5">Risk Guardian</div>
+                                        <p class="text-[11px] text-slate-400 leading-relaxed" x-text="truncateRationale(neg.guardian_rationale)"></p>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="neg.rejection_reason && neg.status !== 'executed'">
+                                <div class="flex items-center gap-1.5 mb-2 pl-[2px]">
+                                    <i class="fas fa-ban text-rose-400 text-[9px]"></i>
+                                    <span class="mono text-[10px] text-rose-400/80" x-text="neg.rejection_reason"></span>
+                                </div>
+                            </template>
+
+                            <!-- Footer -->
+                            <div class="mt-3 pt-2.5 border-t border-white/[0.05] space-y-1.5">
+                                <div class="flex justify-between mono text-[10px] text-slate-600">
+                                    <span>Consensus</span>
+                                    <span x-text="Math.min(neg.signatures || 0, 2) + ' / 2 signatures'"></span>
+                                </div>
+                                <div class="w-full h-0.5 bg-white/[0.05] rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full transition-all duration-700 bg-blue-500"
+                                         :style="'width:' + Math.min((neg.signatures||0)/2*100, 100) + '%'"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- ── COMPLETED SECTION ── always rendered, hidden via x-show to avoid Alpine x-if/x-for re-render bug -->
+                <div class="mt-5" x-show="completedNegotiations().length > 0">
+                    <!-- Divider -->
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="flex-1 h-px bg-white/[0.06]"></div>
+                        <span class="mono text-[10px] text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
+                            <i class="fas fa-check-double text-[8px]"></i>
+                            Completed
+                            <span class="text-slate-700" x-text="'· ' + completedNegotiations().length"></span>
+                        </span>
+                        <div class="flex-1 h-px bg-white/[0.06]"></div>
+                    </div>
+
+                    <!-- Compact completed rows -->
+                    <div class="space-y-1.5">
+                        <template x-for="neg in completedNegotiations()" :key="neg.proposal_id">
+                            <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.10] cursor-pointer transition-all"
+                                 :class="neg.status === 'executed' ? 'hover:border-emerald-500/20' : 'hover:border-amber-500/20'"
+                                 @click="selectedPid = neg.proposal_id">
+
+                                <div class="w-1.5 h-1.5 rounded-full shrink-0"
+                                     :class="neg.status === 'executed' ? 'bg-emerald-400' : 'bg-amber-500'"></div>
+
+                                <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                                    <span class="mono text-[10px] font-medium text-slate-300" x-text="formatAmount(neg)"></span>
+                                    <span class="mono text-[10px] text-slate-400" x-text="neg.asset_in"></span>
+                                    <i class="fas fa-arrow-right text-slate-700 text-[8px]"></i>
+                                    <span class="mono text-[10px] text-slate-400" x-text="neg.asset_out"></span>
+                                    <span class="mono text-[9px] text-slate-700 truncate ml-1" x-text="truncate(neg.proposal_id, 16)"></span>
+                                </div>
+
+                                <span class="mono text-[9px] text-emerald-600 shrink-0 hidden sm:block"
+                                      x-show="neg.tx_hash"
+                                      x-text="truncate(neg.tx_hash, 14)"></span>
+
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="mono text-[9px] text-slate-700" x-text="formatRelTime(neg.ts)"></span>
+                                    <span class="mono text-[9px] px-1.5 py-0.5 rounded border"
+                                          :class="neg.status === 'executed' ? 'text-emerald-600 border-emerald-600/20 bg-emerald-500/5' : 'text-amber-600 border-amber-600/20 bg-amber-500/5'"
+                                          x-text="statusLabel(neg.status)"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
 
-    <!-- Negotiation Logic View -->
-    <div x-show="selectedPid" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm" x-cloak>
-        <div class="bg-gray-900 border border-gray-700 rounded-xl max-w-4xl w-full max-h-[80vh] flex flex-col shadow-2xl" @click.away="selectedPid = null">
-            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
-                <h3 class="text-xs font-bold mono uppercase tracking-widest text-blue-500" x-text="'Negotiation Logic: ' + selectedPid"></h3>
-                <button @click="selectedPid = null" class="text-gray-500 hover:text-white"><i class="fas fa-times"></i></button>
+    <!-- ── RIGHT COLUMN ── -->
+    <div class="flex flex-col gap-4" style="flex: 1; min-width: 0; height: 100%; overflow: hidden;">
+
+        <!-- Section A: Mission Control -->
+        <div class="glass rounded-2xl p-5 flex flex-col" style="flex: 0 0 auto; max-height: 260px;">
+            <div class="flex items-center justify-between mb-3 shrink-0">
+                <h2 class="display font-semibold text-sm">Mission Control</h2>
+                <span class="mono text-[10px] text-slate-500"
+                      x-text="data.nodes.filter(n=>n.alive).length + '/' + data.nodes.length + ' online'"></span>
             </div>
-            <div class="p-6 overflow-y-auto space-y-6">
-                <template x-for="msg in Array.from(new Map(data.feed.filter(m => m.payload.proposal_id === selectedPid || m.payload.root_proposal_id === selectedPid).map(m => [m.topic + JSON.stringify(m.payload), m])).values()).sort((a,b) => a.timestamp - b.timestamp)">
-                    <div class="border-l-2 pl-4" :class="topicBorder(msg.topic)">
-                        <div class="flex justify-between text-[10px] mono mb-1">
-                            <span :class="topicColor(msg.topic)" x-text="friendlyEvent(msg.topic)"></span>
-                            <span class="text-gray-600" x-text="formatTime(msg.timestamp) + ' from ' + formatNodeName(msg.sender)"></span>
+            <div class="space-y-2 overflow-y-auto flex-1">
+                <template x-for="node in data.nodes" :key="node.node_id">
+                    <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+                        <div class="w-2 h-2 rounded-full shrink-0"
+                             :class="node.alive ? 'bg-emerald-400 dot-live' : 'bg-slate-700'"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center">
+                                <span class="mono text-[11px] font-medium" x-text="nodeLabel(node.node_id)"></span>
+                                <span class="mono text-[10px]"
+                                      :class="node.alive ? 'text-emerald-400' : 'text-slate-600'"
+                                      x-text="node.alive ? 'ONLINE' : 'OFFLINE'"></span>
+                            </div>
+                            <div class="mono text-[10px] text-slate-600 truncate" x-text="nodeRole(node)"></div>
                         </div>
-                        <div class="text-xs text-gray-300 bg-black/30 p-2 rounded" x-text="msg.payload.rationale || summarizePayload(msg)"></div>
+                        <div class="mono text-[10px] text-slate-700 shrink-0" x-text="formatLatency(node.last_seen)"></div>
                     </div>
+                </template>
+                <template x-if="data.nodes.length === 0">
+                    <p class="mono text-[10px] text-slate-700 text-center py-3 ticker">No nodes registered yet…</p>
                 </template>
             </div>
         </div>
+
+        <!-- Section B: Threats Blocked -->
+        <div class="glass rounded-2xl p-4" style="flex: 0 0 auto; max-height: 200px; overflow: hidden;">
+            <div class="flex items-center justify-between mb-2.5 shrink-0">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-skull-crossbones text-rose-400 text-xs"></i>
+                    <h2 class="display font-semibold text-sm">Threats Blocked</h2>
+                </div>
+                <span class="mono text-[10px] font-bold text-rose-400" x-text="data.attack_count + ' total'"></span>
+            </div>
+            <div class="space-y-1.5 overflow-y-auto" style="max-height: 130px;">
+                <template x-for="atk in data.attacks" :key="atk.proposal_id">
+                    <div class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-rose-500/5 border border-rose-500/15">
+                        <div class="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="mono text-[10px] text-rose-300 truncate" x-text="truncate(atk.proposal_id, 22)"></span>
+                                <span class="mono text-[9px] text-slate-600 shrink-0" x-text="formatRelTime(atk.ts)"></span>
+                            </div>
+                            <div class="mono text-[9px] text-rose-400/60 truncate" x-text="atk.rejection_reason || atk.asset_in + ' → ' + atk.asset_out"></div>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="data.attacks.length === 0">
+                    <p class="mono text-[10px] text-slate-700 text-center py-2">No threats detected</p>
+                </template>
+            </div>
+        </div>
+
+        <!-- Section C: 0G Memory Chain -->
+        <div class="glass rounded-2xl p-5 flex flex-col" style="flex: 1; min-height: 0;">
+            <div class="flex items-center justify-between mb-3 shrink-0">
+                <div>
+                    <h2 class="display font-semibold text-sm">0G Memory Chain</h2>
+                    <p class="mono text-[9px] text-slate-600 mt-0.5">Tamper-evident proofs on 0G Layer 1</p>
+                </div>
+                <template x-if="head">
+                    <span class="mono text-[10px] text-slate-500">Head: <span class="text-violet-400" x-text="truncate(head, 14)"></span></span>
+                </template>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-2">
+                <template x-for="receipt in receipts" :key="receipt.id">
+                    <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05] hover:border-violet-500/20 transition-all cursor-pointer">
+                        <div class="w-2 h-2 rounded-full bg-violet-400 shrink-0" style="box-shadow: 0 0 6px rgba(139,92,246,0.5)"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="mono text-[10px] text-violet-400 font-medium" x-text="receipt.type || '?'"></div>
+                            <div class="mono text-[10px] text-slate-600 truncate" x-text="receipt.id"></div>
+                        </div>
+                        <span class="mono text-[10px] text-slate-700 shrink-0" x-text="formatRelTime(receipt.ts)"></span>
+                    </div>
+                </template>
+                <template x-if="receipts.length === 0">
+                    <p class="mono text-[10px] text-slate-700 text-center py-4 ticker">Waiting for 0G artifacts…</p>
+                </template>
+            </div>
+        </div>
+
     </div>
+</main>
 
-    <script>
-        function dashboard() {
+<!-- ═══════════════════════ MODAL: Trade Decision Timeline ═══════════════════════ -->
+<div x-show="selectedPid" x-cloak
+     class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/70 backdrop-blur-md"
+     @click.self="selectedPid = null">
+    <div class="glass rounded-2xl max-w-3xl w-full max-h-[80vh] flex flex-col shadow-2xl border border-white/10">
+        <div class="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between shrink-0">
+            <div>
+                <div class="display font-semibold text-sm">Trade Decision Timeline</div>
+                <div class="mono text-[10px] text-blue-400 mt-0.5" x-text="selectedPid"></div>
+            </div>
+            <button @click="selectedPid = null" class="w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-slate-400 hover:text-white transition-all">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+        <div class="p-6 overflow-y-auto space-y-3">
+            <template x-for="msg in negotiationMessages()" :key="msg.id">
+                <div x-show="msg.payload.rationale || summarizePayload(msg)">
+
+                    <!-- ── Final outcome: execution gets a prominent block ── -->
+                    <template x-if="msg.topic === 'EXECUTION_SUCCESS'">
+                        <div class="rounded-xl p-4 border border-emerald-500/30 bg-emerald-500/5">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                                    <i class="fas fa-check text-emerald-400 text-[10px]"></i>
+                                </div>
+                                <span class="display font-semibold text-sm text-emerald-400">Trade Executed On-Chain</span>
+                                <span class="mono text-[10px] text-slate-600 ml-auto" x-text="formatTime(msg.timestamp)"></span>
+                            </div>
+                            <div class="mono text-[11px] text-emerald-300/80 break-all" x-text="msg.payload.tx_hash"></div>
+                        </div>
+                    </template>
+
+                    <!-- ── All other events ── -->
+                    <template x-if="msg.topic !== 'EXECUTION_SUCCESS'">
+                        <div class="flex gap-3">
+                            <div class="w-7 h-7 rounded-xl border flex items-center justify-center shrink-0 text-xs mt-0.5"
+                                 :class="agentAvatar(msg)">
+                                <i :class="agentIcon(msg)"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                    <span class="display font-semibold text-sm" :class="agentColor(msg)" x-text="agentName(msg)"></span>
+                                    <span class="mono text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]"
+                                          :class="topicColor(msg.topic)"
+                                          x-text="topicLabel(msg.topic)"></span>
+                                    <span class="mono text-[10px] text-slate-600 ml-auto" x-text="formatTime(msg.timestamp)"></span>
+                                </div>
+                                <div class="bg-white/[0.03] border border-white/[0.05] rounded-xl p-3 text-sm text-slate-300 leading-relaxed"
+                                     x-text="msg.payload.rationale || summarizePayload(msg)"></div>
+                            </div>
+                        </div>
+                    </template>
+
+                </div>
+            </template>
+            <template x-if="negotiationMessages().length === 0">
+                <p class="mono text-[10px] text-slate-600 text-center py-8">No feed messages for this proposal yet.</p>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+function dashboard() {
+    return {
+        data: {
+            nodes: [],
+            feed: [],
+            negotiations: [],
+            attacks: [],
+            attack_count: 0,
+            safe_address: "0x...",
+            server_time: Date.now() / 1000
+        },
+        head: null,
+        receipts: [],
+        connected: false,
+        selectedPid: null,
+
+        get kpis() {
+            const negs = this.data.negotiations || [];
             return {
-                data: {
-                    nodes: [],
-                    feed: [],
-                    negotiations: [],
-                    safe_address: "0x...",
-                    server_time: Date.now() / 1000
-                },
-                head: null,
-                receipts: [],
-                connected: false,
-                selectedMsg: null,
-                selectedPid: null,
-                
-                init() {
-                    this.poll();
-                    setInterval(() => this.poll(), 2000);
-                },
+                executed: negs.filter(n => n.status === 'executed').length,
+                attacks:  this.data.attack_count || 0,
+            };
+        },
 
-                async poll() {
-                    try {
-                        const [dashRes, headRes, receiptsRes] = await Promise.all([
-                            fetch('/api/dashboard'),
-                            fetch('/api/head'),
-                            fetch('/api/receipts')
-                        ]);
+        init() {
+            this.poll();
+            setInterval(() => this.poll(), 2000);
+        },
 
-                        if (dashRes.ok) {
-                            this.data = await dashRes.json();
-                            this.connected = true;
-                        }
-                        
-                        if (headRes.ok) {
-                            const h = await headRes.json();
-                            this.head = h.head;
-                        }
-
-                        if (receiptsRes.ok) {
-                            const r = await receiptsRes.json();
-                            this.receipts = r.receipts;
-                        }
-                    } catch (e) {
-                        console.error("Poll failed", e);
-                        this.connected = false;
-                    }
-                },
-
-                formatNodeName(id) {
-                    return id.replace('_Node_', ' ').replace('Execution_Node_P', 'Executor ');
-                },
-
-                formatLatency(ts) {
-                    const diff = this.data.server_time - ts;
-                    if (diff < 1) return '1ms';
-                    return Math.floor(diff) + 's';
-                },
-
-                formatTime(ts) {
-                    const d = new Date(ts * 1000);
-                    return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                },
-
-                formatRelTime(ts) {
-                    if (!ts) return '';
-                    const diff = Math.floor(this.data.server_time - ts);
-                    if (diff < 60) return diff + 's ago';
-                    return Math.floor(diff/60) + 'm ago';
-                },
-
-                truncate(s, n=16) {
-                    if (!s) return '';
-                    return s.length > n ? s.slice(0, n) + '...' : s;
-                },
-
-                topicColor(t) {
-                    const colors = {
-                        'HEARTBEAT': 'text-gray-500',
-                        'MARKET_DATA': 'text-yellow-500',
-                        'PROPOSALS': 'text-blue-500',
-                        'CONSENSUS_SIGNATURES': 'text-green-500',
-                        'EXECUTION_SUCCESS': 'text-purple-500',
-                        'ATTACK_REJECTED': 'text-red-500',
-                        'PROPOSAL_EVALUATIONS': 'text-orange-400'
-                    };
-                    return colors[t] || 'text-gray-400';
-                },
-
-                friendlyEvent(t) {
-                    const names = {
-                        'HEARTBEAT': 'Node Online',
-                        'MARKET_DATA': 'Market Shift Detected',
-                        'PROPOSALS': 'New Trade Proposed',
-                        'CONSENSUS_SIGNATURES': 'Signature Collected',
-                        'EXECUTION_SUCCESS': 'Execution Successful',
-                        'ATTACK_REJECTED': 'Adversary Attack Blocked',
-                        'PROPOSAL_EVALUATIONS': 'Agent Reasoning',
-                        'SIM_ORACLE_REQUEST': 'Safety Simulation'
-                    };
-                    return names[t] || t;
-                },
-
-                summarizePayload(msg) {
-                    const p = msg.payload;
-                    const t = msg.topic;
-                    if (t === 'MARKET_DATA') return `Scenario: ${p.scenario_name || 'Generic Volatility'}`;
-                    if (t === 'PROPOSALS') return `Swap ${p.amount_in_units/1e18} ${p.asset_in} for ${p.asset_out}`;
-                    if (t === 'CONSENSUS_SIGNATURES') return `Agent ${this.formatNodeName(msg.sender)} signed Proposal ${p.proposal_id}`;
-                    if (t === 'EXECUTION_SUCCESS') return `On-chain Tx: ${this.truncate(p.tx_hash, 14)}`;
-                    if (t === 'ATTACK_REJECTED') return `Reason: ${p.rejection_reason}`;
-                    if (t === 'PROPOSAL_EVALUATIONS') return p.rationale ? this.truncate(p.rationale, 80) : p.status;
-                    return JSON.stringify(p);
-                },
-
-                topicBorder(t) {
-                    const colors = {
-                        'PROPOSALS': 'border-blue-500',
-                        'PROPOSAL_EVALUATIONS': 'border-orange-500',
-                        'CONSENSUS_SIGNATURES': 'border-green-500',
-                        'EXECUTION_SUCCESS': 'border-purple-500',
-                        'ATTACK_REJECTED': 'border-red-500'
-                    };
-                    return colors[t] || 'border-gray-800';
-                },
-
-                statusClasses(s) {
-                    if (s === 'executed') return 'text-green-500 border-green-500/30 bg-green-500/5';
-                    if (s === 'attack_blocked') return 'text-red-500 border-red-500/30 bg-red-500/5';
-                    return 'text-blue-500 border-blue-500/30 bg-blue-500/5 animate-pulse';
+        async poll() {
+            try {
+                const [dashRes, headRes, receiptsRes] = await Promise.all([
+                    fetch('/api/dashboard'),
+                    fetch('/api/head'),
+                    fetch('/api/receipts')
+                ]);
+                if (dashRes.ok) {
+                    this.data = await dashRes.json();
+                    this.connected = true;
                 }
+                if (headRes.ok)     { const h = await headRes.json();     this.head = h.head; }
+                if (receiptsRes.ok) { const r = await receiptsRes.json(); this.receipts = r.receipts || []; }
+            } catch(e) {
+                this.connected = false;
             }
-        }
-    </script>
+        },
+
+        // ── Queue split ──
+
+        activeNegotiations() {
+            const active = new Set(['proposed', 'evaluated', 'signing']);
+            return (this.data.negotiations || []).filter(n => active.has(n.status));
+        },
+
+        completedNegotiations() {
+            const done = new Set(['executed', 'rejected']);
+            return (this.data.negotiations || []).filter(n => done.has(n.status));
+        },
+
+        // ── Scenario card helpers ──
+
+        cardAccent(neg) {
+            if (neg.status === 'attack_blocked') return 'card-attack';
+            if (neg.status === 'executed')       return 'card-executed';
+            if (neg.status === 'rejected')       return 'card-rejected';
+            return 'card-active';
+        },
+
+        statusDotClass(neg) {
+            if (neg.status === 'attack_blocked') return 'bg-rose-500';
+            if (neg.status === 'executed')       return 'bg-emerald-400';
+            if (neg.status === 'rejected')       return 'bg-amber-500';
+            if (neg.status === 'signing')        return 'bg-blue-400 dot-signing';
+            return 'bg-blue-400 dot-live';
+        },
+
+        statusBadgeClass(s) {
+            if (s === 'executed')       return 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5';
+            if (s === 'attack_blocked') return 'text-rose-400 border-rose-500/30 bg-rose-500/10';
+            if (s === 'rejected')       return 'text-amber-400 border-amber-500/30 bg-amber-500/5';
+            if (s === 'signing')        return 'text-blue-300 border-blue-500/40 bg-blue-500/10 blink';
+            if (s === 'evaluated')      return 'text-violet-300 border-violet-500/30 bg-violet-500/5';
+            return 'text-slate-400 border-white/10 bg-white/[0.03]';
+        },
+
+        statusLabel(s) {
+            const labels = {
+                proposed:      'PROPOSED',
+                evaluated:     'EVALUATED',
+                signing:       'SIGNING',
+                executed:      'EXECUTED',
+                rejected:      'REJECTED',
+                attack_blocked:'ATTACK BLOCKED',
+            };
+            return labels[s] || (s || '').toUpperCase();
+        },
+
+        pipelineStages(neg) {
+            const s = neg.status || 'proposed';
+            const sigs = neg.signatures || 0;
+            const labels = ['Market', 'Quant', 'Guardian', 'Consensus', 'Execute'];
+
+            let doneCount;
+            if      (s === 'executed')       doneCount = 5;
+            else if (sigs >= 2)              doneCount = 4;
+            else if (sigs >= 1)              doneCount = 3;
+            else if (s === 'signing')        doneCount = 3;
+            else if (s === 'evaluated')      doneCount = 2;
+            else                             doneCount = 1;
+
+            return labels.map((label, i) => {
+                let state;
+                if (s === 'attack_blocked') {
+                    state = i < 2 ? 'stage-done' : (i === 2 ? 'stage-blocked' : 'stage-pending');
+                } else if (s === 'rejected') {
+                    state = i < 3 ? 'stage-done' : (i === 3 ? 'stage-blocked' : 'stage-pending');
+                } else if (i < doneCount) {
+                    state = 'stage-done';
+                } else if (i === doneCount && s !== 'executed') {
+                    state = 'stage-active';
+                } else {
+                    state = 'stage-pending';
+                }
+                return { label, cls: state + ' border rounded-md px-1.5 py-1 text-[9px] mono flex-1 text-center transition-all' };
+            });
+        },
+
+        formatAmount(neg) {
+            if (!neg.amount_in_units) return '';
+            try {
+                const dec = neg.asset_in_decimals || 18;
+                const n = parseFloat(neg.amount_in_units) / Math.pow(10, dec);
+                if (n === 0) return '0';
+                if (n < 0.0001) return n.toExponential(3);
+                if (n < 1)     return n.toFixed(4);
+                return n.toFixed(4);
+            } catch(e) { return ''; }
+        },
+
+        truncateRationale(s, n = 160) {
+            if (!s) return '';
+            return s.length > n ? s.slice(0, n) + '…' : s;
+        },
+
+        // ── Mission Control helpers ──
+
+        nodeLabel(id) {
+            if (!id) return '—';
+            const lower = id.toLowerCase();
+            if (lower.includes('quant'))     return 'Quant Analyst';
+            if (lower.includes('patriarch')) return 'Risk Guardian';
+            if (lower.includes('exec'))      return 'Trade Executor';
+            if (lower.includes('adversary') || lower.includes('watchdog')) return 'Byzantine Watchdog';
+            if (lower.includes('marketgod') || lower.includes('market'))   return 'Market Oracle';
+            if (lower.includes('keeper'))    return 'KeeperHub Oracle';
+            return id.replace(/_/g, ' ');
+        },
+
+        nodeRole(node) {
+            // Derive role from the sender ID — payload.role is unreliable in demo DB
+            const id = (node.node_id || '').toLowerCase();
+            if (id.includes('quant'))                              return 'quantitative analyst';
+            if (id.includes('patriarch'))                         return 'risk guardian';
+            if (id.includes('exec'))                              return 'trade executor';
+            if (id.includes('adversary') || id.includes('watchdog')) return 'byzantine watchdog';
+            if (id.includes('marketgod') || id.includes('market'))   return 'market oracle';
+            if (id.includes('keeper'))                            return 'keeperhub oracle';
+            const s = node.status;
+            if (s && s !== 'unknown' && s !== 'idle') return s.replace(/_/g, ' ').toLowerCase();
+            return 'idle';
+        },
+
+        formatLatency(ts) {
+            if (!ts) return '—';
+            const diff = this.data.server_time - ts;
+            if (diff < 1)   return '<1s';
+            if (diff < 60)  return Math.floor(diff) + 's ago';
+            return Math.floor(diff / 60) + 'm ago';
+        },
+
+        // ── Timeline modal helpers ──
+
+        negotiationMessages() {
+            if (!this.selectedPid) return [];
+            const pid = this.selectedPid;
+            const neg = (this.data.negotiations || []).find(n => n.proposal_id === pid);
+            const sessionTs = neg ? (neg.session_start_ts || 0) : 0;
+
+            // Only show messages from the current session; drop adversary, heartbeats, raw oracle requests
+            const SKIP_TOPICS = new Set(['HEARTBEAT', 'SIM_ORACLE_REQUEST', 'SIM_ORACLE_RESULT',
+                                          'MARKET_SNAPSHOTS', 'FIREWALL_CLEARED']);
+            const SKIP_SENDERS = new Set(['Adversary_Node_Z']);
+
+            const msgs = (this.data.feed || []).filter(m => {
+                if (m.payload.proposal_id !== pid && m.payload.root_proposal_id !== pid) return false;
+                if (SKIP_TOPICS.has(m.topic)) return false;
+                if (SKIP_SENDERS.has(m.sender)) return false;
+                if (sessionTs && m.timestamp < sessionTs) return false;
+                return true;
+            });
+
+            // Deduplicate: same topic + same sender role (not per-node gossip copy)
+            const seen = new Map();
+            for (const m of msgs) {
+                const key = m.topic + '|' + this._senderRole(m.sender) + '|' + (m.payload.rationale || '').slice(0, 40);
+                if (!seen.has(key)) seen.set(key, m);
+            }
+            return Array.from(seen.values()).sort((a, b) => a.timestamp - b.timestamp);
+        },
+
+        _senderRole(sender) {
+            if (!sender) return '';
+            const s = sender.toLowerCase();
+            if (s.includes('quant'))     return 'quant';
+            if (s.includes('patriarch')) return 'patriarch';
+            if (s.includes('exec'))      return 'executor';
+            if (s.includes('adversary')) return 'adversary';
+            return sender;
+        },
+
+        agentName(msg) {
+            const t = msg.topic;
+            if (t === 'PROPOSALS')            return 'Quant Analyst';
+            if (t === 'PROPOSAL_EVALUATIONS') return 'Risk Guardian';
+            if (t === 'EXECUTION_SUCCESS')    return 'Trade Executor';
+            if (t === 'ATTACK_REJECTED')      return 'Byzantine Watchdog';
+            if (t === 'MARKET_DATA')          return 'Market Oracle';
+            if (t === 'CONSENSUS_SIGNATURES') {
+                // Show who actually signed, not a generic label
+                const role = this._senderRole(msg.payload.signer_id || msg.sender);
+                if (role === 'quant')     return 'Quant Analyst';
+                if (role === 'patriarch') return 'Risk Guardian';
+                if (role === 'executor')  return 'Trade Executor';
+                return 'Agent';
+            }
+            return this.formatNodeName(msg.sender);
+        },
+
+        agentAvatar(msg) {
+            const t = msg.topic;
+            if (t === 'PROPOSALS')            return 'avatar-blue';
+            if (t === 'PROPOSAL_EVALUATIONS') return 'avatar-amber';
+            if (t === 'EXECUTION_SUCCESS' || t === 'CONSENSUS_SIGNATURES') return 'avatar-emerald';
+            if (t === 'ATTACK_REJECTED')      return 'avatar-rose';
+            if (t === 'MARKET_DATA')          return 'avatar-violet';
+            return 'avatar-blue';
+        },
+
+        agentIcon(msg) {
+            const t = msg.topic;
+            if (t === 'PROPOSALS')            return 'fas fa-brain';
+            if (t === 'PROPOSAL_EVALUATIONS') return 'fas fa-shield-halved';
+            if (t === 'EXECUTION_SUCCESS' || t === 'CONSENSUS_SIGNATURES') return 'fas fa-bolt';
+            if (t === 'ATTACK_REJECTED')      return 'fas fa-skull-crossbones';
+            if (t === 'MARKET_DATA')          return 'fas fa-chart-line';
+            return 'fas fa-circle-nodes';
+        },
+
+        agentColor(msg) {
+            const t = msg.topic;
+            if (t === 'PROPOSALS')            return 'text-blue-400';
+            if (t === 'PROPOSAL_EVALUATIONS') return 'text-amber-400';
+            if (t === 'EXECUTION_SUCCESS' || t === 'CONSENSUS_SIGNATURES') return 'text-emerald-400';
+            if (t === 'ATTACK_REJECTED')      return 'text-rose-400';
+            if (t === 'MARKET_DATA')          return 'text-violet-400';
+            return 'text-slate-300';
+        },
+
+        topicLabel(t) {
+            const labels = {
+                'PROPOSALS':            'Proposal',
+                'PROPOSAL_EVALUATIONS': 'Evaluation',
+                'CONSENSUS_SIGNATURES': 'Signed',
+                'EXECUTION_SUCCESS':    'Executed',
+                'ATTACK_REJECTED':      'Blocked',
+                'MARKET_DATA':          'Market Signal',
+            };
+            return labels[t] || t;
+        },
+
+        summarizePayload(msg) {
+            const p = msg.payload;
+            const t = msg.topic;
+            if (t === 'MARKET_DATA')          return `Market scenario: ${p.scenario_name || p.market_sentiment || 'signal received'}`;
+            if (t === 'PROPOSALS')            return `Proposing swap: ${p.asset_in} → ${p.asset_out}`;
+            if (t === 'CONSENSUS_SIGNATURES') {
+                const who = this.agentName(msg);
+                return `${who} provided cryptographic approval signature (EIP-712)`;
+            }
+            if (t === 'EXECUTION_SUCCESS')    return `Transaction confirmed on-chain: ${p.tx_hash || '—'}`;
+            if (t === 'ATTACK_REJECTED')      return `Adversarial proposal blocked — ${p.rejection_reason || 'mandate violation'}`;
+            if (t === 'PROPOSAL_EVALUATIONS') return `Evaluation complete — ${p.consensus_status || 'pending'}`;
+            return null; // caller will skip null entries
+        },
+
+        // ── Generic utils ──
+
+        formatNodeName(id) {
+            if (!id) return '—';
+            return id.replace('_Node_', ' ').replace('Execution_Node_P', 'Exec ');
+        },
+
+        formatTime(ts) {
+            const d = new Date(ts * 1000);
+            return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        },
+
+        formatRelTime(ts) {
+            if (!ts) return '';
+            const diff = Math.floor(this.data.server_time - ts);
+            if (diff < 5)   return 'just now';
+            if (diff < 60)  return diff + 's ago';
+            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+            return Math.floor(diff / 3600) + 'h ago';
+        },
+
+        truncate(s, n = 16) {
+            if (!s) return '—';
+            s = String(s);
+            return s.length > n ? s.slice(0, n) + '…' : s;
+        },
+
+        // Avatar CSS classes needed by timeline modal (Alpine inline class binding)
+        // These are defined in a style block as utility classes so AlpineJS can bind them:
+        // avatar-blue/amber/emerald/rose/violet → inline styles since Tailwind JIT won't see dynamic classes
+    };
+}
+</script>
+
+<style>
+    .avatar-blue   { background: rgba(59,130,246,0.15);  border-color: rgba(59,130,246,0.4);  color: #3b82f6; }
+    .avatar-amber  { background: rgba(245,158,11,0.15);  border-color: rgba(245,158,11,0.4);  color: #f59e0b; }
+    .avatar-emerald{ background: rgba(16,185,129,0.15);  border-color: rgba(16,185,129,0.4);  color: #10b981; }
+    .avatar-rose   { background: rgba(244,63,94,0.15);   border-color: rgba(244,63,94,0.4);   color: #f43f5e; }
+    .avatar-violet { background: rgba(139,92,246,0.15);  border-color: rgba(139,92,246,0.4);  color: #8b5cf6; }
+</style>
 </body>
 </html>

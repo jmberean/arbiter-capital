@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arbiter Capital — ETHGlobal Open Agents 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0A0C12;
+    --surface:  #111520;
+    --border:   rgba(255,255,255,0.07);
+    --text:     #F1F5F9;
+    --muted:    #64748B;
+    --blue:     #3B82F6;
+    --emerald:  #10B981;
+    --amber:    #F59E0B;
+    --rose:     #F43F5E;
+    --violet:   #8B5CF6;
+    --cyan:     #06B6D4;
+  }
+
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: var(--bg);
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Deck container ── */
+  #deck {
+    width: 100vw; height: 100vh;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── Individual slides ── */
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 60px 80px;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.45s cubic-bezier(0.4,0,0.2,1),
+                transform 0.45s cubic-bezier(0.4,0,0.2,1);
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+  .slide.active {
+    opacity: 1; transform: translateX(0);
+    pointer-events: auto;
+  }
+  .slide.exit {
+    opacity: 0; transform: translateX(-60px);
+  }
+
+  /* ── Ambient background glow ── */
+  .slide::before {
+    content: '';
+    position: absolute; inset: 0;
+    pointer-events: none;
+    border-radius: 0;
+    z-index: 0;
+  }
+  .slide-1::before  { background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(59,130,246,0.08) 0%, transparent 70%); }
+  .slide-2::before  { background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(244,63,94,0.07) 0%, transparent 70%); }
+  .slide-3::before  { background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(16,185,129,0.07) 0%, transparent 70%); }
+  .slide-4::before  { background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(139,92,246,0.08) 0%, transparent 70%); }
+  .slide-5::before  { background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(59,130,246,0.07) 0%, transparent 70%); }
+  .slide-6::before  { background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(16,185,129,0.07) 0%, transparent 70%); }
+  .slide-7::before  { background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(245,158,11,0.07) 0%, transparent 70%); }
+  .slide-8::before  { background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(6,182,212,0.07) 0%, transparent 70%); }
+  .slide-9::before  { background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(139,92,246,0.08) 0%, transparent 70%); }
+  .slide-10::before { background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(244,63,94,0.08) 0%, transparent 70%); }
+  .slide-11::before { background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(59,130,246,0.09) 0%, transparent 70%); }
+
+  .slide > * { position: relative; z-index: 1; }
+
+  /* ── Typography ── */
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-size: clamp(52px, 7vw, 88px);
+    font-weight: 900; letter-spacing: -0.03em; line-height: 1;
+    background: linear-gradient(135deg, #fff 30%, rgba(59,130,246,0.8));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-size: clamp(28px, 3.5vw, 42px);
+    font-weight: 800; letter-spacing: -0.02em; line-height: 1.15;
+    margin-bottom: 40px;
+  }
+  h3 { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+  p  { font-size: 16px; line-height: 1.7; color: #CBD5E1; }
+
+  .subtitle {
+    font-size: clamp(18px, 2.2vw, 26px);
+    font-weight: 300; color: #94A3B8;
+    letter-spacing: 0.01em;
+    margin-bottom: 32px;
+  }
+
+  .badge-row {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    margin-top: 8px;
+  }
+  .badge {
+    padding: 6px 16px; border-radius: 100px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+    border: 1px solid;
+  }
+  .badge-blue   { color: var(--blue);   border-color: rgba(59,130,246,0.35);  background: rgba(59,130,246,0.08); }
+  .badge-violet { color: var(--violet); border-color: rgba(139,92,246,0.35);  background: rgba(139,92,246,0.08); }
+  .badge-emerald{ color: var(--emerald);border-color: rgba(16,185,129,0.35);  background: rgba(16,185,129,0.08); }
+  .badge-amber  { color: var(--amber);  border-color: rgba(245,158,11,0.35);  background: rgba(245,158,11,0.08); }
+  .badge-rose   { color: var(--rose);   border-color: rgba(244,63,94,0.35);   background: rgba(244,63,94,0.08); }
+  .badge-cyan   { color: var(--cyan);   border-color: rgba(6,182,212,0.35);   background: rgba(6,182,212,0.08); }
+
+  /* ── Problem cards ── */
+  .problem-cards {
+    display: flex; flex-direction: column; gap: 18px;
+    width: 100%; max-width: 760px;
+  }
+  .problem-card {
+    display: flex; align-items: flex-start; gap: 20px;
+    padding: 22px 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    border-left: 3px solid;
+  }
+  .problem-card:nth-child(1) { border-left-color: var(--rose); }
+  .problem-card:nth-child(2) { border-left-color: var(--amber); }
+  .problem-card:nth-child(3) { border-left-color: var(--violet); }
+  .problem-num {
+    font-size: 13px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+    opacity: 0.4; min-width: 24px; padding-top: 1px;
+  }
+  .problem-card p { font-size: 17px; color: #E2E8F0; }
+
+  /* ── Flow diagram (slide 3) ── */
+  .flow {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 0; width: 100%; max-width: 680px;
+  }
+  .flow-node {
+    width: 100%;
+    padding: 16px 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .flow-node-label { font-weight: 700; font-size: 16px; }
+  .flow-node-meta  { font-size: 12px; font-family: 'JetBrains Mono', monospace; opacity: 0.5; }
+  .flow-arrow {
+    font-size: 20px; color: var(--muted);
+    line-height: 1; padding: 4px 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .flow-arrow-label {
+    font-size: 10px; font-family: 'JetBrains Mono', monospace;
+    color: var(--blue); opacity: 0.7; letter-spacing: 0.08em;
+  }
+
+  /* ── Arch diagram (slide 4) ── */
+  .arch {
+    width: 100%; max-width: 860px;
+    display: flex; flex-direction: column; gap: 0; align-items: center;
+  }
+  .arch-mesh {
+    width: 100%; padding: 16px 28px;
+    background: rgba(59,130,246,0.06);
+    border: 1px solid rgba(59,130,246,0.25);
+    border-radius: 14px;
+    text-align: center;
+  }
+  .arch-mesh-title { font-weight: 700; font-size: 15px; color: var(--blue); }
+  .arch-mesh-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .arch-line { width: 1px; height: 28px; background: var(--border); margin: 0 auto; }
+  .arch-agents {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px; width: 100%;
+  }
+  .arch-agent {
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-align: center;
+    position: relative;
+  }
+  .arch-agent-arrow {
+    position: absolute; right: -18px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; color: var(--muted); z-index: 2;
+  }
+  .arch-agent-name { font-weight: 700; font-size: 14px; }
+  .arch-agent-sub  { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+  .arch-storage {
+    width: 100%; padding: 16px 28px;
+    background: rgba(139,92,246,0.06);
+    border: 1px solid rgba(139,92,246,0.25);
+    border-radius: 14px;
+    text-align: center;
+  }
+  .arch-storage-title { font-weight: 700; font-size: 15px; color: var(--violet); }
+  .arch-storage-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .arch-watchdog-row {
+    display: flex; align-items: center; gap: 12px; margin-top: 12px;
+  }
+  .arch-watchdog-line {
+    flex: 1; height: 1px; background: rgba(244,63,94,0.3);
+  }
+  .arch-watchdog {
+    padding: 12px 20px;
+    background: rgba(244,63,94,0.06);
+    border: 1px solid rgba(244,63,94,0.25);
+    border-radius: 10px;
+    text-align: center; flex-shrink: 0;
+  }
+  .arch-watchdog-name { font-weight: 700; font-size: 13px; color: var(--rose); }
+  .arch-watchdog-sub  { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Trade flow steps (slide 6) ── */
+  .steps { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 800px; }
+  .step  {
+    display: flex; gap: 20px; align-items: flex-start;
+    padding: 16px 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step:nth-child(1) .step-num { background: rgba(139,92,246,0.2); color: var(--violet); }
+  .step:nth-child(2) .step-num { background: rgba(59,130,246,0.2);  color: var(--blue); }
+  .step:nth-child(3) .step-num { background: rgba(245,158,11,0.2);  color: var(--amber); }
+  .step:nth-child(4) .step-num { background: rgba(16,185,129,0.2);  color: var(--emerald); }
+  .step:nth-child(5) .step-num { background: rgba(6,182,212,0.2);   color: var(--cyan); }
+  .step:nth-child(6) .step-num { background: rgba(139,92,246,0.2);  color: var(--violet); }
+  .step-content { flex: 1; }
+  .step-title { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+  .step-detail { font-size: 13px; color: #94A3B8; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Tables ── */
+  .data-table {
+    width: 100%; max-width: 900px;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .data-table th {
+    padding: 10px 18px; text-align: left;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); border-bottom: 1px solid var(--border);
+  }
+  .data-table td {
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    line-height: 1.5;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #94A3B8; }
+  .prize {
+    font-weight: 700; font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Code block ── */
+  .code-block {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #94A3B8;
+    width: 100%; max-width: 740px;
+    margin: 20px 0;
+  }
+  .code-block .hl { color: var(--violet); }
+  .code-block .hl2 { color: var(--blue); }
+  .code-block .hl3 { color: var(--emerald); }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: flex; gap: 32px; margin-top: 24px;
+  }
+  .stat { text-align: center; }
+  .stat-val { font-size: 36px; font-weight: 900; letter-spacing: -0.02em; }
+  .stat-lab { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+
+  /* ── Contract cards (slide 8) ── */
+  .contract-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px; width: 100%; max-width: 900px; margin-bottom: 24px;
+  }
+  .contract-card {
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .contract-name { font-weight: 700; font-size: 13px; color: var(--cyan); margin-bottom: 8px; }
+  .contract-addr { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); word-break: break-all; }
+
+  .tx-list { width: 100%; max-width: 900px; }
+  .tx-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-label { font-size: 13px; font-weight: 600; min-width: 200px; }
+  .tx-hash  { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--emerald); }
+
+  /* ── Byzantine table (slide 10) ── */
+  .attack-row:nth-child(odd) td { background: rgba(244,63,94,0.02); }
+
+  /* ── Slide 11 close ── */
+  .close-tagline {
+    font-size: clamp(14px, 1.8vw, 20px);
+    color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 40px;
+  }
+  .close-dots {
+    display: flex; gap: 10px; margin-bottom: 40px;
+    justify-content: center;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ── Navigation ── */
+  #nav {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 20px;
+    z-index: 100;
+  }
+  #nav button {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 40px; height: 40px; border-radius: 50%;
+    font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #nav button:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); }
+  #nav button:disabled { opacity: 0.2; cursor: default; }
+  #slide-counter {
+    font-size: 12px; font-family: 'JetBrains Mono', monospace;
+    color: var(--muted); min-width: 48px; text-align: center;
+  }
+  #progress {
+    position: fixed; top: 0; left: 0; height: 2px;
+    background: linear-gradient(90deg, var(--blue), var(--violet));
+    transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+    z-index: 100;
+  }
+
+  /* ── Slide number chip ── */
+  #slide-chip {
+    position: fixed; top: 20px; right: 28px;
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    color: var(--muted); z-index: 100;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Divider line ── */
+  .divider {
+    width: 48px; height: 2px;
+    background: linear-gradient(90deg, var(--blue), transparent);
+    margin: 0 auto 28px;
+    border-radius: 2px;
+  }
+
+  /* ── Demo slide placeholder ── */
+  .demo-placeholder {
+    width: 100%; max-width: 900px;
+    aspect-ratio: 16/9;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px;
+    position: relative; overflow: hidden;
+  }
+  .demo-placeholder::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, rgba(16,185,129,0.04) 100%);
+  }
+  .demo-placeholder-icon { font-size: 48px; opacity: 0.2; }
+  .demo-placeholder-text { font-size: 14px; color: var(--muted); }
+  .demo-screenshot {
+    width: 100%; max-width: 900px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+<div id="slide-chip">ARBITER CAPITAL</div>
+
+<div id="deck">
+
+  <!-- ──────────────────────────────────────── SLIDE 1 — TITLE -->
+  <div class="slide slide-1 active">
+    <div class="eyebrow">ETHGlobal Open Agents 2026</div>
+    <h1>ARBITER<br>CAPITAL</h1>
+    <div class="subtitle">Autonomous Quantitative Yield Optimizer</div>
+    <div class="badge-row">
+      <span class="badge badge-blue">Gensyn AXL</span>
+      <span class="badge badge-violet">0G Storage</span>
+      <span class="badge badge-amber">KeeperHub</span>
+      <span class="badge badge-cyan">Uniswap v4</span>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────── SLIDE 2 — PROBLEM -->
+  <div class="slide slide-2">
+    <h2>Yield opportunities in DeFi<br>don't wait for you</h2>
+    <div class="problem-cards">
+      <div class="problem-card">
+        <div class="problem-num">01</div>
+        <p>Pendle implied yields spike, stETH spreads open, volatility signals a stable rotation. The window is minutes, not hours.</p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">02</div>
+        <p>Monitoring yield spreads, computing gas-adjusted returns, and timing execution manually doesn't scale</p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">03</div>
+        <p>Automating it with a single script means nothing is checking the math or simulating the trade before your money moves</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────── SLIDE 3 — WHAT WE BUILT -->
+  <div class="slide slide-3">
+    <h2>Quant math first. AI consensus second.<br>On-chain execution third.</h2>
+    <div class="flow">
+      <div class="flow-node">
+        <div>
+          <div class="flow-node-label" style="color:var(--violet)">Market Oracle</div>
+          <div class="flow-node-meta">broadcasts price events</div>
+        </div>
+        <span class="badge badge-blue" style="font-size:11px">AXL</span>
+      </div>
+      <div class="flow-arrow">↓<span class="flow-arrow-label">MARKET_DATA topic</span></div>
+      <div class="flow-node">
+        <div>
+          <div class="flow-node-label" style="color:var(--blue)">Quant Analyst</div>
+          <div class="flow-node-meta">yield spread math · gas-adjusted returns · EIP-712 sign</div>
+        </div>
+        <span class="badge badge-blue" style="font-size:11px">AXL</span>
+      </div>
+      <div class="flow-arrow">↓<span class="flow-arrow-label">PROPOSALS topic</span></div>
+      <div class="flow-node">
+        <div>
+          <div class="flow-node-label" style="color:var(--amber)">Risk Guardian</div>
+          <div class="flow-node-meta">re-runs quant math · KeeperHub on-chain simulation · sign</div>
+        </div>
+        <span class="badge badge-amber" style="font-size:11px">AXL</span>
+      </div>
+      <div class="flow-arrow">↓<span class="flow-arrow-label">CONSENSUS_SIGNATURES</span></div>
+      <div class="flow-node">
+        <div>
+          <div class="flow-node-label" style="color:var(--emerald)">Trade Executor</div>
+          <div class="flow-node-meta">2-of-2 threshold · Safe.execTransaction · Uniswap v4</div>
+        </div>
+        <span class="badge badge-emerald" style="font-size:11px">on-chain</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────── SLIDE 4 — ARCHITECTURE -->
+  <div class="slide slide-4">
+    <h2>Architecture</h2>
+    <div class="arch">
+      <div class="arch-mesh">
+        <div class="arch-mesh-title">Gensyn AXL Mesh</div>
+        <div class="arch-mesh-sub">5 Yggdrasil P2P nodes · encrypted transport · no centralized broker</div>
+      </div>
+      <div class="arch-line"></div>
+      <div class="arch-agents">
+        <div class="arch-agent" style="border-color:rgba(59,130,246,0.3)">
+          <div class="arch-agent-name" style="color:var(--blue)">QUANT</div>
+          <div class="arch-agent-sub">LangGraph<br>EIP-712</div>
+          <div class="arch-agent-arrow">→</div>
+        </div>
+        <div class="arch-agent" style="border-color:rgba(245,158,11,0.3)">
+          <div class="arch-agent-name" style="color:var(--amber)">PATRIARCH</div>
+          <div class="arch-agent-sub">LangGraph<br>KeeperHub Oracle</div>
+          <div class="arch-agent-arrow">→</div>
+        </div>
+        <div class="arch-agent" style="border-color:rgba(16,185,129,0.3)">
+          <div class="arch-agent-name" style="color:var(--emerald)">EXECUTOR</div>
+          <div class="arch-agent-sub">Gnosis Safe<br>Uniswap v4</div>
+        </div>
+      </div>
+      <div class="arch-line"></div>
+      <div class="arch-storage">
+        <div class="arch-storage-title">0G Decentralised Storage</div>
+        <div class="arch-storage-sub">LLMContext artifacts · DecisionReceipts · 510-receipt audit chain</div>
+      </div>
+      <div class="arch-watchdog-row">
+        <div class="arch-watchdog-line"></div>
+        <div class="arch-watchdog">
+          <div class="arch-watchdog-name">Byzantine Watchdog</div>
+          <div class="arch-watchdog-sub">adversary agent · 6 attack types</div>
+        </div>
+        <div class="arch-watchdog-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────── SLIDE 5 — DEMO -->
+  <div class="slide slide-5">
+    <div class="eyebrow">Mission Control</div>
+    <h2 style="margin-bottom:24px">Live Dashboard</h2>
+    <img class="demo-screenshot" src="dashboard.png" alt="Arbiter Capital Mission Control Dashboard">
+    <p style="margin-top:16px;font-size:14px;text-align:center;color:var(--muted)">
+      Real-time agent status · Trade Queue · Threats Blocked · 0G Memory Chain
+    </p>
+  </div>
+
+  <!-- ──────────────────────────────────────── SLIDE 6 — TRADE FLOW -->
+  <div class="slide slide-6">
+    <h2>A trade from signal to settlement</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title" style="color:var(--violet)">Market Oracle</div>
+          <div class="step-detail">broadcasts flash crash event over AXL → MARKET_DATA topic</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title" style="color:var(--blue)">Quant Analyst</div>
+          <div class="step-detail">LangGraph pipeline → draft proposal → self-audit hash check → EIP-712 sign</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title" style="color:var(--amber)">Risk Guardian</div>
+          <div class="step-detail">recheck quant math → KeeperHub Sim Oracle (on-chain simulation) → approve + sign</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title" style="color:var(--emerald)">Trade Executor</div>
+          <div class="step-detail">ecrecover both sigs → 2-of-2 threshold → Safe.execTransaction()</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <div class="step-title" style="color:var(--cyan)">Uniswap v4</div>
+          <div class="step-detail">ArbiterThrottleHook enforces per-block rate limit → swap executes → SBT minted</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <div class="step-title" style="color:var(--violet)">0G Storage</div>
+          <div class="step-detail">full LLM context stored → audit receipt chained to prior head → immutable</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────── SLIDE 7 — BOUNTIES -->
+  <div class="slide slide-7">
+    <h2>Bounty Targets</h2>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Protocol</th>
+          <th>Prize</th>
+          <th>What We Built</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-violet" style="font-size:12px">0G Storage</span></td>
+          <td><span class="prize" style="color:var(--violet)">$15,000</span></td>
+          <td style="color:#CBD5E1">LLMContext artifacts, 510-receipt audit chain, replay CLI. Every AI call reproducible forever.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue" style="font-size:12px">Gensyn AXL</span></td>
+          <td><span class="prize" style="color:var(--blue)">$5,000</span></td>
+          <td style="color:#CBD5E1">5-node Yggdrasil mesh, DEMO_MODE fails-closed, Byzantine Watchdog with 6 attack types</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-cyan" style="font-size:12px">Uniswap v4</span></td>
+          <td><span class="prize" style="color:var(--cyan)">$5,000</span></td>
+          <td style="color:#CBD5E1">ArbiterThrottleHook deployed Sepolia, 3 live swap txns, SBT receipt per execution</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-amber" style="font-size:12px">KeeperHub</span></td>
+          <td><span class="prize" style="color:var(--amber)">$5,000</span></td>
+          <td style="color:#CBD5E1">Sim Oracle at consensus time, LangChain BaseTool bridge, builder feedback doc</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="stats-row" style="margin-top:32px">
+      <div class="stat"><div class="stat-val" style="color:var(--emerald)">$30k+</div><div class="stat-lab">Prize Target</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--blue)">5</div><div class="stat-lab">AI Agents</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--violet)">510+</div><div class="stat-lab">0G Receipts</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--rose)">6</div><div class="stat-lab">Attacks Blocked</div></div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────── SLIDE 8 — CONTRACTS -->
+  <div class="slide slide-8">
+    <h2>Deployed on Sepolia</h2>
+    <div class="contract-grid">
+      <div class="contract-card">
+        <div class="contract-name">Gnosis Safe (2-of-2)</div>
+        <div class="contract-addr">0xd42C17165aC8A2C69f085FAb5daf8939f983eB21</div>
+      </div>
+      <div class="contract-card">
+        <div class="contract-name">ArbiterThrottleHook</div>
+        <div class="contract-addr">0x4Fb70855Af455680075d059AD216a01A161800C0</div>
+      </div>
+      <div class="contract-card">
+        <div class="contract-name">ArbiterReceipt SBT</div>
+        <div class="contract-addr">0x47D6414fbf582141D4Ce54C3544C14A6057D5a04</div>
+      </div>
+    </div>
+    <div class="tx-list" style="background:var(--surface);border:1px solid var(--border);border-radius:12px">
+      <div class="tx-row">
+        <div class="tx-label">flash_crash_eth: WETH→USDC</div>
+        <div class="tx-hash">0x21fc3fbc253eae804d0f5f2c19a907fd430231f1acd58725de5c66b049c4f839</div>
+      </div>
+      <div class="tx-row">
+        <div class="tx-label">gas_war: WETH→USDC</div>
+        <div class="tx-hash">0xd725285ff0857ce63b70f975ff805862ae7260a40d2fd672f30991ab26df035e</div>
+      </div>
+      <div class="tx-row">
+        <div class="tx-label">pendle_yield_arbitrage</div>
+        <div class="tx-hash">0x399ac5a34a5a3f0a3a65cc69d244522c18cd9a3bf7424fc86c8174c0d19a3460</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──────────────────────────────────────── SLIDE 9 — 0G AUDIT -->
+  <div class="slide slide-9">
+    <h2>Every LLM call is reproducible</h2>
+    <div class="code-block">
+<span class="hl">sha256</span>( system_prompt + messages + model_id + temperature + seed )
+                      ↓
+        <span class="hl2">LLMContext</span> artifact → stored on <span class="hl">0G</span> → returns content hash
+                      ↓
+       chained: <span class="hl3">receipt_hash</span> = sha256( payload || prev_hash )
+                      ↓
+        <span class="hl2">audit head</span>: 0c21b299bf0b339a5eedda9296407424baa3afaf...
+    </div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-val" style="color:var(--violet)">510+</div><div class="stat-lab">Chain Depth</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--blue)">6</div><div class="stat-lab">LLM Contexts Stored</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--emerald)">3</div><div class="stat-lab">Execution Receipts</div></div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-top:20px;font-family:'JetBrains Mono',monospace">
+      python scripts/replay_decision.py &lt;hash&gt; → pulls from 0G, reruns call, verifies schema hash
+    </p>
+  </div>
+
+  <!-- ──────────────────────────────────────── SLIDE 10 — BYZANTINE -->
+  <div class="slide slide-10">
+    <h2>Byzantine-resilient by design</h2>
+    <table class="data-table" style="max-width:820px">
+      <thead>
+        <tr>
+          <th>Attack</th>
+          <th>Method</th>
+          <th>Blocked By</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="attack-row">
+          <td><span style="color:var(--rose);font-weight:700">A1</span> Invalid signature</td>
+          <td class="mono">Forged quant sig</td>
+          <td class="mono" style="color:var(--emerald)">ecrecover mismatch</td>
+        </tr>
+        <tr class="attack-row">
+          <td><span style="color:var(--rose);font-weight:700">A2</span> Replay nonce</td>
+          <td class="mono">Stale safe_tx_hash</td>
+          <td class="mono" style="color:var(--emerald)">Nonce check</td>
+        </tr>
+        <tr class="attack-row">
+          <td><span style="color:var(--rose);font-weight:700">A3</span> Math forge</td>
+          <td class="mono">Manipulated amount</td>
+          <td class="mono" style="color:var(--emerald)">Hash mismatch in recheck</td>
+        </tr>
+        <tr class="attack-row">
+          <td><span style="color:var(--rose);font-weight:700">A4</span> Whitelist bypass</td>
+          <td class="mono">Unknown protocol</td>
+          <td class="mono" style="color:var(--emerald)">Firewall</td>
+        </tr>
+        <tr class="attack-row">
+          <td><span style="color:var(--rose);font-weight:700">A5</span> Fake sim oracle</td>
+          <td class="mono">Unsigned attestation</td>
+          <td class="mono" style="color:var(--emerald)">Sig verification</td>
+        </tr>
+        <tr class="attack-row">
+          <td><span style="color:var(--rose);font-weight:700">A6</span> Wrong domain</td>
+          <td class="mono">Bad EIP-712 domain</td>
+          <td class="mono" style="color:var(--emerald)">ecrecover mismatch</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top:20px;font-size:14px;text-align:center;color:var(--muted)">
+      Every rejection is signed and logged to 0G as an <span style="font-family:'JetBrains Mono',monospace;color:var(--rose)">AttackRejection</span> receipt.
+    </p>
+  </div>
+
+  <!-- ──────────────────────────────────────── SLIDE 11 — CLOSE -->
+  <div class="slide slide-11">
+    <div class="close-dots">
+      <div class="dot" style="background:var(--blue)"></div>
+      <div class="dot" style="background:var(--violet)"></div>
+      <div class="dot" style="background:var(--emerald)"></div>
+      <div class="dot" style="background:var(--amber)"></div>
+    </div>
+    <h1>ARBITER<br>CAPITAL</h1>
+    <div class="close-tagline">Quantitative · Byzantine-Resilient · Fully Auditable</div>
+    <div class="badge-row">
+      <span class="badge badge-blue">Gensyn AXL $5k</span>
+      <span class="badge badge-violet">0G Storage $15k</span>
+      <span class="badge badge-amber">KeeperHub $5k</span>
+      <span class="badge badge-cyan">Uniswap v4 $5k</span>
+    </div>
+    <p style="margin-top:40px;font-size:13px;color:var(--muted);font-family:'JetBrains Mono',monospace">
+      Built at ETHGlobal Open Agents 2026
+    </p>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- Navigation -->
+<div id="nav">
+  <button id="btn-prev" onclick="navigate(-1)" disabled>&#8592;</button>
+  <span id="slide-counter">1 / 11</span>
+  <button id="btn-next" onclick="navigate(1)">&#8594;</button>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total  = slides.length;
+  let current  = 0;
+
+  function go(n) {
+    const prev = current;
+    current = Math.max(0, Math.min(total - 1, n));
+    if (prev === current) return;
+
+    slides[prev].classList.remove('active');
+    slides[prev].classList.add('exit');
+    setTimeout(() => slides[prev].classList.remove('exit'), 500);
+
+    slides[current].classList.add('active');
+    update();
+  }
+
+  function navigate(dir) { go(current + dir); }
+
+  function update() {
+    document.getElementById('slide-counter').textContent = `${current + 1} / ${total}`;
+    document.getElementById('btn-prev').disabled = current === 0;
+    document.getElementById('btn-next').disabled = current === total - 1;
+    document.getElementById('progress').style.width = `${((current + 1) / total) * 100}%`;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); navigate(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); navigate(-1); }
+    if (e.key === 'Home') go(0);
+    if (e.key === 'End')  go(total - 1);
+  });
+
+  // Touch/swipe support
+  let touchX = 0;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) navigate(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
+  update();
+</script>
+</body>
+</html>
