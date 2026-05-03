@@ -28,7 +28,7 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 from web3 import Web3
 from eth_account import Account
@@ -171,7 +171,7 @@ def _execute_safe_tx(w3: Web3, safe_contract, to: str, calldata: bytes, nonce: i
         to, 0, calldata, 0, 0, 0, 0, zero, zero, sigs,
     ).build_transaction({
         "from":  EXECUTOR_ADDR,
-        "nonce": w3.eth.get_transaction_count(EXECUTOR_ADDR),
+        "nonce": w3.eth.get_transaction_count(EXECUTOR_ADDR, "pending"),
         "gas":   300_000,
     })
     signed = Account.sign_transaction(tx, EXECUTOR_KEY)
@@ -212,6 +212,7 @@ def main():
             receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
             status  = "OK" if receipt.status == 1 else "FAILED"
             print(f"  mined:     block={receipt.blockNumber}  status={status}")
+            time.sleep(3)  # let RPC propagate nonce update before next query
         except Exception as exc:
             print(f"  ERROR: {exc}")
             print("  Skipping remaining tokens — fix and re-run.")

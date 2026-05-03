@@ -106,34 +106,29 @@ DEMO_MODE=1
 
 ## Running
 
-### Start AXL nodes (required for DEMO_MODE=1)
+### Local Demo (Recommended for Recording)
 
-```bash
-bash scripts/setup_axl.sh
-```
+Due to hardcoded port conflicts in the `axl-node.exe` binary (9002/7000), running a full 5-node mesh on a single machine requires significant network workarounds. For the demo recording, we use the **SQLite Message Bus** simulation. This maintains the 5-process isolation and EIP-712 signing but avoids the binary's port collision.
 
-### Run all processes (each in its own terminal)
+1.  **Configure `.env`**:
+    *   Set `DEMO_MODE=0`
+    *   Set `SAFE_ADDRESS` to your real Sepolia Safe (for execution)
+2.  **Start all daemons**:
+    ```bash
+    $env:PYTHONPATH="."; python scripts/start_all.py
+    ```
+3.  **Inject Scenario**:
+    Choose `[1] Inject flash_crash_eth` from the interactive menu.
 
-```bash
-python quant_process.py
-python patriarch_process.py
-python execution_process.py
-python byzantine_watchdog.py
-python monitor_network.py     # God View — open this last
-```
+### Multi-Machine P2P (AXL Native)
 
-### Inject a market scenario
-
-```bash
-python market_injector.py flash_crash_eth
-# Scenarios: flash_crash_eth | pendle_yield_arbitrage | protocol_hack | gas_war | lst_expansion
-```
-
-### Full demo run (automated)
-
-```bash
-python scripts/demo_run.py
-```
+To run in full decentralized mode:
+1.  **Install AXL nodes** on separate machines or containers.
+2.  **Configure `.env`**:
+    *   Set `DEMO_MODE=1`
+    *   Set `AXL_NODE_URL_QUANT`, etc. to the respective node addresses.
+    *   Set `AXL_NODE_KEY_QUANT`, etc. for envelope signing.
+3.  **Start daemons**: `python scripts/start_all.py`. The processes will fail-closed if they cannot reach the real AXL nodes.
 
 ---
 

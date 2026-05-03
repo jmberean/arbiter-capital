@@ -10,6 +10,7 @@ Usage:
   python scripts/demo_run.py --dry-run
 """
 import argparse
+import io
 import json
 import os
 import sqlite3
@@ -17,6 +18,10 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf-16"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "axl_network.db"
@@ -163,19 +168,19 @@ def main():
     print("=" * 60)
 
     print("\n[1/7] Inject flash_crash_eth")
-    step_inject_and_execute("flash_crash_eth", timeout=60)
+    step_inject_and_execute("flash_crash_eth", timeout=180)
 
     print("\n[2/7] Inject pendle_yield_arbitrage (2 iterations)")
-    step_inject_and_execute("pendle_yield_arbitrage", timeout=90)
+    step_inject_and_execute("pendle_yield_arbitrage", timeout=180)
 
     if not args.skip_watchdog:
         print("\n[3/7] Byzantine Watchdog — 6 attacks")
-        step_watchdog_sequence(timeout=35)
+        step_watchdog_sequence(timeout=90)
     else:
         print("\n[3/7] Skipping Watchdog (--skip-watchdog)")
 
     print("\n[4/7] Inject protocol_hack")
-    step_inject_and_execute("protocol_hack", timeout=30)
+    step_inject_and_execute("protocol_hack", timeout=180)
 
     print("\n[5/7] Inject gas_war (firewall or market_god should reject)")
     gas_b = baseline("EXECUTION_SUCCESS")

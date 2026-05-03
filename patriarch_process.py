@@ -7,6 +7,7 @@ import time
 import uuid
 
 from dotenv import load_dotenv
+load_dotenv()  # must run before core.identity is imported so keys are available at eval time
 
 from core.crypto import (
     proposal_eip712_digest, bundle_hash, sign_digest, recover_signer,
@@ -64,6 +65,7 @@ def run_patriarch_daemon():
     snapshot_cache: dict[str, dict] = {}
 
     logger.info("Patriarch listening for Proposals and Market Snapshots...")
+    axl_node.publish("HEARTBEAT", {"node_id": "Patriarch_Node_B", "role": "patriarch", "timestamp": time.time(), "status": "ready"})
 
     while True:
         try:

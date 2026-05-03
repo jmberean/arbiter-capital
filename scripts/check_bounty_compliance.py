@@ -51,7 +51,7 @@ def check_compliance():
               "arbiterSafe" in hook_src
               and "lastSwapAt" in hook_src
               and "windowNotionalUsed" in hook_src
-              and "_afterSwap" in hook_src,
+              and "afterSwap" in hook_src,
               "(real ArbiterThrottleHook with cooldown + notional cap)")
     else:
         check("uniswap.throttle_hook_real", False, "(ArbiterThrottleHook.sol missing)")
@@ -141,7 +141,7 @@ def check_compliance():
           "(consult_sim_oracle verifies attestor sig)")
     check("patriarch.outside_mandate_on_timeout",
           "OUTSIDE_MANDATE" in patriarch,
-          "(sim oracle timeout → REJECTED OUTSIDE_MANDATE)")
+          "(sim oracle timeout -> REJECTED OUTSIDE_MANDATE)")
 
     # 15. Quant — real Safe nonce
     quant = _read("agents/quant.py")

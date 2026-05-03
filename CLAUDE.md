@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Silent execution:** Plan steps internally, execute, and review thoroughly before responding. Avoid narrating every action in chat.
 - **Iterative commits:** Break tasks into small logical units and commit frequently with descriptive messages.
-- **Living documentation:** Keep `README.md`, `GEMINI.md`,`MANUAL_ACTION_REQUIRED.md`, `CLAUDE.md`, and `docs/` in sync with implementation — docs must never lag behind code.
+- **Living documentation:** Keep `README.md`, `GEMINI.md`, `MANUAL_ACTION_REQUIRED.md`, `TECHNICAL_ROADMAP.md`, `CLAUDE.md`, and `docs/` in sync with implementation — docs must never lag behind code.
 - **Keep `.gitignore` and `requirements.txt` updated** whenever new files, dirs, or dependencies are introduced.
 - **Always use the venv:** All Python commands must run inside `.venv`. Activate with `.venv\Scripts\activate` (Windows) before any `python` or `pytest` call. Install packages with `uv pip install <pkg>` *while the venv is active* — never `pip install` directly.
 - **Roadmap checkbox discipline:** After implementing and testing a step, immediately update `docs/TECHNICAL_ROADMAP.md` — change `### [ ] Step X.Y` to `### [x] Step X.Y`. Only mark done after the relevant test passes or the compliance gate confirms it. Do not batch-update checkboxes.
@@ -19,6 +19,11 @@ ETHGlobal Open Agents hackathon submission (deadline: 2026-05-06). Targeting $50
 
 All commands assume the venv is active. Always run `.venv\Scripts\activate` first.
 
+**PYTHONPATH must be set** — tests and processes require the project root on the path. On Windows PowerShell:
+```powershell
+$env:PYTHONPATH="C:\Workspace\arbiter-capital"
+```
+
 ```bash
 # Activate virtualenv (Windows) — required before any python/pytest/uv command
 .venv\Scripts\activate
@@ -26,8 +31,8 @@ All commands assume the venv is active. Always run `.venv\Scripts\activate` firs
 # Install dependencies (with venv active)
 uv pip install -r requirements.txt
 
-# Run all tests
-pytest tests/
+# Run all tests (PYTHONPATH must be set, SAFE_ADDRESS cleared to stay mocked)
+$env:PYTHONPATH="C:\Workspace\arbiter-capital"; $env:SAFE_ADDRESS=""; pytest tests/ -v
 
 # Run a single test file
 pytest tests/test_firewall.py -v
@@ -35,11 +40,23 @@ pytest tests/test_firewall.py -v
 # Run a single test
 pytest tests/test_firewall.py::test_firewall_clears_valid_proposal -v
 
+# Start all daemons + interactive menu (local mock: DEMO_MODE=0 in .env, SAFE_ADDRESS cleared)
+$env:PYTHONPATH="C:\Workspace\arbiter-capital"; $env:SAFE_ADDRESS=""; python scripts/start_all.py
+
+# Run full demo sequence (daemons must be running first via start_all.py)
+python scripts/demo_run.py
+
+# Start all daemons + run full demo in one command
+$env:PYTHONPATH="C:\Workspace\arbiter-capital"; $env:SAFE_ADDRESS=""; python scripts/start_all.py --demo
+
+# Stop all running daemons
+python scripts/start_all.py --stop
+
 # Inject a market scenario and trigger agent flow
 python market_injector.py flash_crash_eth
 # Scenarios: flash_crash_eth | pendle_yield_arbitrage | protocol_hack | gas_war | lst_expansion
 
-# Run processes (each in a separate terminal)
+# Run processes manually (each in a separate terminal, PYTHONPATH set)
 python quant_process.py
 python patriarch_process.py
 python execution_process.py
@@ -51,6 +68,8 @@ python scripts/check_bounty_compliance.py
 # Audit chain verifier
 python verify_audit.py
 ```
+
+**For local mock runs** (no testnet, no real AXL nodes): set `DEMO_MODE=0` in `.env` and override `SAFE_ADDRESS=""`. The AXL URLs in `.env` point to localhost — they will fail-over to SQLite automatically.
 
 ## Architecture
 
@@ -66,7 +85,11 @@ byzantine_watchdog.py → Publishes adversarial PROPOSALS (demo only)
 ```
 
 ### AXL network (`core/network.py`)
-`MockAXLNode` is the only transport abstraction. In dev mode (no `AXL_NODE_URL_*` set) it uses `axl_network.db` (SQLite). When `DEMO_MODE=1`, it **exits with code 1** if no AXL URL is set — this is intentional and enforces the Gensyn bounty requirement. Every daemon reads its own env var: `AXL_NODE_URL_QUANT`, `AXL_NODE_URL_PATRIARCH`, `AXL_NODE_URL_EXEC`, `AXL_NODE_URL_KEEPERHUB`, `AXL_NODE_URL_WATCHDOG`.
+`MockAXLNode` is the only transport abstraction. In dev mode (no `AXL_NODE_URL_*` set) it uses `axl_network.db` (SQLite). 
+
+**Single-Machine Limitation:** The `axl-node.exe` binary has hardcoded API (9002) and P2P (7000) ports. This prevents running multiple nodes on a single machine. For local demo recordings, the **SQLite Message Bus** is used to simulate the AXL mesh while maintaining the same multi-process, cryptographically-signed architecture. The code remains **AXL-native** and ready for full decentralization.
+
+When `DEMO_MODE=1`, it **exits with code 1** if no AXL URL is set — this is intentional and enforces the Gensyn bounty requirement for multi-machine setups.
 
 ### Cryptographic flow
 1. Quant's `sign_proposal` node builds EIP-712 `proposal_hash` and Safe `safe_tx_hash`, then computes `bundle_hash = keccak(proposal_hash || safe_tx_hash)`. It signs both and encodes as `quant_signature = sig_bundle + sig_safe[2:]` (130 hex chars total, split at index 132).
@@ -76,7 +99,7 @@ byzantine_watchdog.py → Publishes adversarial PROPOSALS (demo only)
 
 ### LangGraph agents
 - **`agents/quant.py`** — Graph: `ingest_data → recall_memory → draft_proposal → capture_llm_context → self_audit → sign_proposal`. The `self_audit` node drops proposals where `quant_analysis_hash` doesn't match state. `sign_proposal` produces the EIP-712 signatures.
-- **`agents/patriarch.py`** — Graph: `recheck → evaluate`. `recheck` re-runs `calculate_optimal_rotation` and rejects on hash mismatch. `evaluate` uses `llm.with_structured_output(ProposalEvaluation)` — the LLM can only return ACCEPTED/REJECTED with a fixed rejection-reason enum.
+- **`agents/patriarch.py`** — Graph: `recheck → evaluate → consult_sim_oracle`. `recheck` re-runs `calculate_optimal_rotation` and rejects on hash mismatch. `evaluate` uses `llm.with_structured_output(ProposalEvaluation)` — the LLM can only return ACCEPTED/REJECTED with a fixed rejection-reason enum. `consult_sim_oracle` calls the KeeperHub `KeeperHubSimulateTool`, verifies the attestor signature (§12), and auto-rejects on SIM_REVERT or OUTSIDE_MANDATE if the oracle is unsigned, invalid, or unreachable.
 - Both agents call `memory/llm_context_writer.py::capture_and_persist` after every LLM call. This writes a `LLMContext` artifact to 0G storage.
 
 ### Memory / 0G (`memory/memory_manager.py`)
@@ -91,13 +114,16 @@ byzantine_watchdog.py → Publishes adversarial PROPOSALS (demo only)
 Pure Python, no LLM. Checks: protocol whitelist, asset whitelist, max USD value ($50k), hook permission bits (bottom 14 bits of hook address must match expected flags). Proposal must be `ACCEPTED` before it reaches the firewall.
 
 ### Known bugs to be aware of
-- `agents/quant.py::sign_proposal` hardcodes `p.safe_nonce = 0`.
+- None currently tracked. `sign_proposal` previously hardcoded `safe_nonce = 0` — now fixed to call `treasury.read_nonce()`.
 
-### What is missing (not yet created)
-- `execution/uniswap_v4/universal_router.py` + `permit2.py`
-- `docs/KEEPERHUB_FEEDBACK.md` (≥3 friction points, ≥4 KB) — KeeperHub Builder Feedback bounty
-- `monitor/public_verifier/` — QR verifier static site
-- `scripts/demo_run.py`, `scripts/chaos/`, `scripts/setup_axl.sh`
+### Other notable files
+- `monitor_network.py` — AXL bus monitor daemon (launched by `start_all.py`)
+- `scripts/start_all.py` — launches all daemons in separate console windows, readiness check, interactive menu
+- `scripts/demo_run.py` — full demo sequence script
+- `scripts/chaos/` — 6 chaos/fault-injection shell scripts
+- `scripts/setup_axl.sh` — AXL node setup script
+- `monitor/public_verifier/` — QR verifier static site (index.html + server.py)
+- `execution/uniswap_v4/universal_router.py` + `permit2.py` — Uniswap v4 execution helpers
 
 ## Environment Variables
 

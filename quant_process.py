@@ -4,6 +4,7 @@ import json
 import uuid
 import os
 from dotenv import load_dotenv
+load_dotenv()  # must run before core.identity is imported so keys are available at eval time
 from core.network import MockAXLNode
 from core.models import Proposal, ConsensusStatus, ConsensusMessage
 from core.identity import QUANT_ADDR
@@ -43,6 +44,7 @@ def run_quant_daemon():
     proposal_history = {}
 
     logger.info("Quant listening for Market Data and Patriarch Feedback...")
+    axl_node.publish("HEARTBEAT", {"node_id": "Quant_Node_A", "role": "quant", "timestamp": time.time(), "status": "ready"})
 
     while True:
         try:
@@ -58,9 +60,6 @@ def run_quant_daemon():
                 proposal: Proposal = result.get("current_proposal")
 
                 if proposal:
-                    if not proposal.proposal_id or proposal.proposal_id == "uuid_placeholder":
-                        proposal.proposal_id = f"prop_{uuid.uuid4().hex[:8]}"
-
                     # Publish the market snapshot so the Patriarch can recompute
                     axl_node.publish(topic="MARKET_SNAPSHOTS", payload={
                         "market_snapshot_hash": result.get("market_snapshot_hash") or proposal.market_snapshot_hash,
@@ -103,13 +102,12 @@ def run_quant_daemon():
                                 "messages": history["messages"],
                                 "iteration": history["iteration"],
                                 "patriarch_feedback": evaluation["rationale"],
+                                "proposal_id": f"{prop_id}_v{history['iteration'] + 1}"
                             }
                             result = quant_app.invoke(state)
                             new_proposal: Proposal = result.get("current_proposal")
 
                             if new_proposal:
-                                new_proposal.proposal_id = f"{prop_id}_v{history['iteration'] + 1}"
-
                                 axl_node.publish(topic="MARKET_SNAPSHOTS", payload={
                                     "market_snapshot_hash": result.get("market_snapshot_hash") or new_proposal.market_snapshot_hash,
                                     "market_data": history["market_data"],

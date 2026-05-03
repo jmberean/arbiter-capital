@@ -6,6 +6,7 @@ import time
 import threading
 
 from dotenv import load_dotenv
+load_dotenv()  # must run before core.identity is imported so keys are available at eval time
 from eth_utils import keccak
 
 from core.crypto import recover_signer

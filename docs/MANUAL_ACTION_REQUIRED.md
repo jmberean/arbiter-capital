@@ -196,10 +196,31 @@ and all chaos scripts involving `keeperhub_mcp_crash.sh`.
 
 ### What to do
 - [x] 1. `scripts/enable_permit2.py` written ✓ — calls `Permit2.approve(token, universalRouter, maxUint160, maxUint48)` for WETH, USDC, stETH, WBTC via direct Safe `execTransaction` (EIP-712 signed by QUANT_KEY + PATRIARCH_KEY). Does NOT require KeeperHub.
-- [ ] 2. Run:
+- [x] 2. Run:
    ```bash
    python scripts/enable_permit2.py
    ```
+   - WETH approved: 0xd82e751c3eebfa9296dbb6c63389b866301039a58dc72564014436270eb9f1e3 (block 10777436)
+   - USDC approved: 0x754285c1880ce50de024adfc14e4b8208496bae92e0cf7049d4d9370f3a7ad16 (block 10777437)
+   - stETH approved: 0x13007067c5b4e08ff399a8c174c85c182e9b566bd5ff9c9339baea92351bcbc2 (block 10777438)
+   - WBTC approved:  0xc56603b26dead609292e8162ebad1359532c164dde88a9c4781dc5cd1fc48b18 (block 10777439)
+
+---
+
+## 8b. Bugs Fixed (2026-05-02) — No Action Required
+
+These were found and fixed during the pre-flight check:
+
+- **`sign_digest` missing `"0x"` prefix** (`core/crypto.py`) — was silently killing every
+  proposal at Patriarch signature verification. All 20 tests still pass after fix.
+- **`safe_eth` / `pysha3` Windows dependency** — removed entirely. `SafeTreasury` now
+  uses native `web3.py` + `eth_abi` (same pattern as `enable_permit2.py`). No C++ Build
+  Tools required. SafeTreasury confirmed LIVE mode (reads on-chain nonce=8).
+- **0G private key** — generated fresh wallet `0x353DE5B...Fc8553c`, funded with 0.1 OG
+  from Galileo faucet (`https://faucet.0g.ai`). `MemoryManager` confirmed `live_mode=True`.
+- **`py-evm` installed** — needed by `safe-eth-py` internals; added to venv.
+- **`start_all.py` created** — `python scripts/start_all.py` launches all 5 daemons in
+  separate console windows; `--inject`, `--demo`, `--stop` flags available.
 
 ---
 
@@ -208,22 +229,20 @@ and all chaos scripts involving `keeperhub_mcp_crash.sh`.
 **Depends on:** Steps 1–8 all complete.
 
 ### What to do
-- [ ] 1. Start all 5 daemons in separate terminals (with AXL nodes running):
+- [x] 1. Start all 5 daemons (SQLite mode for local demo):
    ```bash
-   python quant_process.py
-   python patriarch_process.py
-   python execution_process.py
-   python byzantine_watchdog.py
-   # KeeperHub MCP server running in background
+   $env:PYTHONPATH="."; python scripts/start_all.py
    ```
-- [ ] 2. Run `python monitor_network.py` in another terminal.
-- [ ] 3. Inject a scenario:
+- [x] 2. Run `python monitor_network.py` in another terminal.
+- [x] 3. Inject a scenario:
    ```bash
    python market_injector.py flash_crash_eth
    ```
-- [ ] 4. Verify on Sepolia Etherscan:
-  - [ ] a. Real swap from Safe → Universal Router → PoolManager (with `ArbiterThrottleHook`).
-  - [ ] b. `ArbiterReceipt` SBT minted to Safe.
+- [x] 4. **STATUS (2026-05-02):** Partially Verified.
+  - [x] a. Quant generates valid EIP-712 signature.
+  - [x] b. Patriarch successfully recovers Quant address (Consensus Verified).
+  - [x] c. **Negotiation Active:** Patriarch rejected trade due to `TIMING_RISK` guardrails.
+  - [ ] d. Real swap from Safe → Universal Router (Pending successful negotiation).
 - [ ] 5. Run `python verify_audit.py --walk-from-head` and confirm `CHAIN VERIFIED`.
 
 ---
@@ -352,17 +371,15 @@ It can only be written **after** Steps 3–9 produce real on-chain state.
 
 ```
 Step 1  (AXL nodes)               ✓ DONE
-Step 2  (Funding)                 ✓ DONE (WETH/stETH/WBTC wrapping still needed)
+Step 2  (Funding)                 ✓ DONE — Safe holds 0.08 WETH + 40 USDC
 Step 3  (Deploy Safe)             ✓ DONE — 0xd42C17165aC8A2C69f085FAb5daf8939f983eB21
 Step 4  (Deploy ThrottleHook)     ✓ DONE — 0x4Fb70855Af455680075d059AD216a01A161800C0
 Step 5  (Deploy ArbiterReceipt)   ✓ DONE — 0x47D6414fbf582141D4Ce54C3544C14A6057D5a04
-Step 8  (Permit2 approvals)       script written, needs WETH/stETH/WBTC in Safe first
-
 Step 7  (KeeperHub server)        ✓ DONE — scripts/keeperhub_mcp_server.py, attestor 0xf278A8c4...
+Step 6  (Enable KeeperHub Module) ✓ DONE — 0x7cd80e05...f30b, block 10775996
+Step 8  (Permit2 approvals)       ✓ DONE — blocks 10777436-10777439
 
-Step 6  (Enable KeeperHub Module on Safe)  ✓ DONE — 0x7cd80e05...f30b, block 10775996
-  └→ Step 8  (Run Permit2 approvals)  ← NEXT BLOCKER (needs WETH/stETH/WBTC in Safe first)
-  └→ Step 9  (E2E live tx)
+  └→ Step 9  (E2E live tx)  ← NEXT BLOCKER
        └→ Step 10 (Real KEEPERHUB_FEEDBACK.md)
        └→ Step 11 (Deploy public verifier to Vercel)
        └→ Step 12 (Write BOUNTY_PROOF.md with real tx hashes)

@@ -62,13 +62,34 @@ def proposal_eip712_digest(p: Any, verifying_contract: str, chain_id: int) -> by
     pre-built dict already conforming to PROPOSAL_TYPES.
     """
     msg = _normalize_message(p)
+    
+    # We use full_message to ensure the domain is correctly incorporated.
+    # eth_account 0.13.7 needs explicit type definitions for the domain.
+    types = {
+        "EIP712Domain": [
+            {"name": "name", "type": "string"},
+            {"name": "version", "type": "string"},
+            {"name": "chainId", "type": "uint256"},
+            {"name": "verifyingContract", "type": "address"},
+        ],
+        "Proposal": PROPOSAL_TYPES["Proposal"]
+    }
+    
     domain = {
         "name": DOMAIN_NAME,
         "version": DOMAIN_VERSION,
         "chainId": int(chain_id),
         "verifyingContract": to_checksum_address(verifying_contract),
     }
-    return encode_typed_data(domain, PROPOSAL_TYPES, "Proposal", msg).body
+    
+    full_message = {
+        "types": types,
+        "domain": domain,
+        "primaryType": "Proposal",
+        "message": msg
+    }
+    
+    return encode_typed_data(full_message=full_message).body
 
 
 def bundle_hash(proposal_hash: bytes, safe_tx_hash: bytes) -> bytes:
@@ -111,7 +132,7 @@ def sign_digest(digest: bytes, private_key: bytes) -> str:
     """Raw-hash sign a 32-byte digest. Returns 0x-prefixed 65-byte hex."""
     if len(digest) != 32:
         raise ValueError(f"digest must be 32 bytes, got {len(digest)}")
-    return Account.unsafe_sign_hash(digest, private_key).signature.hex()
+    return "0x" + Account.unsafe_sign_hash(digest, private_key).signature.hex()
 
 
 def recover_signer(digest: bytes, sig_hex: str) -> str:
