@@ -34,7 +34,12 @@ PATRIARCH_SYSTEM_PROMPT = (
     "Evaluate the incoming Proposal against institutional risk policy. "
     "Output ONLY a ProposalEvaluation. If REJECTED, choose the most specific "
     "rejection_reason from the enum and write a one-line rejection_detail. "
-    "IMPORTANT: For demo and testing purposes, if the risk_score is <= 5.0 and the action is SWAP or YIELD_TRADE, you MUST return ACCEPTED unless there is a glaring error."
+    "IMPORTANT: For demo and testing purposes, if the action is EMERGENCY_WITHDRAW, you SHOULD ACCEPT it if the rationale indicates a safety score drop. "
+    "If the risk_score is <= 5.0 and the action is SWAP or YIELD_TRADE, you MUST return ACCEPTED unless there is a glaring error. "
+    "CRITICAL YIELD EVALUATION RULES: "
+    "For STAKE_LST proposals, evaluate ONLY the LST staking yield spread vs. base ETH staking yield — do NOT compare LST yields against DeFi protocol yields (Pendle, etc.) as they are different asset classes with different risk profiles. A STAKE_LST with risk_score <= 4.0 and stETH yield > 5% MUST be ACCEPTED. "
+    "For YIELD_TRADE proposals, evaluate ONLY the Pendle/DeFi implied yield against gas costs. "
+    "Never reject a proposal by cross-comparing yields across incompatible asset classes."
 )
 
 
@@ -50,6 +55,7 @@ class AgentState(TypedDict):
     llm_messages: Optional[list]
     llm_system_prompt: Optional[str]
     sim_result: Optional[dict]
+    router: Optional[object]
 
 
 def _reject(p: Proposal, reason: str, detail: str) -> Proposal:
@@ -150,7 +156,7 @@ def consult_sim_oracle(state: AgentState):
         from langchain_keeperhub import KeeperHubSimulateTool
         from execution.uniswap_v4.router import UniswapV4Router
 
-        router = UniswapV4Router()
+        router = state.get("router") or UniswapV4Router()
         calldata = router.generate_calldata(p)
 
         sim_tool = KeeperHubSimulateTool()

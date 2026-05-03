@@ -159,7 +159,7 @@ MAX_SWAP_UNITS=100000000000000000   # 0.1 WETH
     ```bash
     bash scripts/setup_axl.sh
     ```
-    This generates per-daemon ed25519 keys, starts a hub-spoke Yggdrasil mesh on ports 9011–9015, and writes `AXL_PEER_KEYS` to `.env` automatically.
+    This generates per-daemon ed25519 keys, starts a hub-spoke Yggdrasil mesh on ports 9011–9015, and writes `AXL_PEER_KEYS` to `.env` automatically. Stop them at any time with `pkill -f axl-node`.
 3.  **Start all daemons**:
     ```bash
     PYTHONPATH=. python scripts/start_all.py

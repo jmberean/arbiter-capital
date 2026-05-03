@@ -55,6 +55,9 @@ def generate_market_data(scenario: str = "normal"):
 
     elif scenario == "gas_war":
         base_data["network"]["gas_price_gwei"] = 850.0
+        base_data["assets"]["WETH"]["volatility_48h"] = 0.38
+        base_data["market_sentiment"] = "panic"
+        base_data["events"].append("Gas War: Network congestion spike to 850 gwei. ETH volatility elevated.")
         
     return base_data
 

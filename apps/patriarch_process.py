@@ -183,6 +183,7 @@ def run_patriarch_daemon():
                     "incoming_proposal": proposal,
                     "messages": [],
                     "market_data": market_data,
+                    "router": router,
                 }
                 result = patriarch_app.invoke(state)
                 reviewed_proposal: Proposal = result.get("reviewed_proposal")

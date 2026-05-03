@@ -61,9 +61,26 @@ class UniswapV4Router:
             return self._encode_swap(proposal)
         elif proposal.action == ActionType.STAKE_LST:
             return self._encode_lido_submit(proposal)
+        elif proposal.action == ActionType.EMERGENCY_WITHDRAW:
+            return self._encode_emergency_withdraw(proposal)
         else:
             logger.warning("Calldata generation for %s not implemented.", proposal.action)
             return b"\x00" * 4
+
+    def _encode_emergency_withdraw(self, proposal: Proposal) -> bytes:
+        """Encodes an ERC20 transfer(owner, amount) as a mock emergency exit."""
+        if not self.owner:
+            logger.warning("No owner set for emergency withdraw, returning null")
+            return b"\x00" * 4
+        
+        # selector for transfer(address,uint256)
+        selector = keccak(text="transfer(address,uint256)")[:4]
+        amount = int(proposal.amount_in_units or "0")
+        encoded = encode(["address", "uint256"], [self.owner, amount])
+        
+        logger.info("Generated EMERGENCY_WITHDRAW (Transfer) calldata for %s: %s units to %s",
+                    proposal.asset_in, amount, self.owner)
+        return selector + encoded
 
     def _encode_swap(self, proposal: Proposal) -> bytes:
         if proposal.amount_in_units is None:
