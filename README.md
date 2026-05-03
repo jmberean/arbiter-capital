@@ -164,7 +164,61 @@ MAX_SWAP_UNITS=100000000000000000   # 0.1 WETH
     ```bash
     PYTHONPATH=. python scripts/start_all.py
     ```
-4.  **Inject Scenario**: Choose `[1] Inject flash_crash_eth` from the interactive menu.
+    This launches Quant, Patriarch, Execution, Watchdog, and Monitor daemons (logs → `state/daemon_logs/`), waits for all five to be alive, then drops into the interactive menu.
+
+4.  **Interactive menu options:**
+
+    | Choice | What it does |
+    |--------|--------------|
+    | `1` — Inject a scenario | Presents the 5 built-in scenarios; pick by number or type the name. Injects market data and waits up to 90s for `EXECUTION_SUCCESS`. |
+    | `2` — Full demo sequence | Runs `scripts/demo_run.py` — cycles through all scenarios with timing and logs each tx hash. |
+    | `3` — Compliance check | Runs `scripts/check_bounty_compliance.py` — must exit 0 before submission. |
+    | `4` — Verify audit chain | Walks the full 0G audit chain from head and prints every decision hash. |
+    | `5` — Exit (leave daemons running) | Closes the menu; daemons keep running in the background. |
+    | `0` — Stop all daemons and exit | Sends SIGTERM to every daemon PID recorded in `state/daemon_pids.txt`. |
+
+    **Available scenarios** (choice `1`):
+    - `flash_crash_eth` — sudden ETH price drop, tests defensive rotation
+    - `pendle_yield_arbitrage` — yield spread opportunity across LSTs
+    - `protocol_hack` — simulated exploit signal, tests hard-reject path
+    - `gas_war` — extreme gas spike (500 gwei), tests throttle hook
+    - `lst_expansion` — staked ETH supply surge, tests rebalancing logic
+
+    **CLI shortcuts** (skip the menu entirely):
+    ```bash
+    # Inject one scenario and exit after execution
+    PYTHONPATH=. python scripts/start_all.py --inject flash_crash_eth
+
+    # Start daemons and immediately run the full demo sequence
+    PYTHONPATH=. python scripts/start_all.py --demo
+
+    # Stop all running daemons (no startup)
+    PYTHONPATH=. python scripts/start_all.py --stop
+
+    # Start daemons without waiting for readiness check
+    PYTHONPATH=. python scripts/start_all.py --no-wait
+    ```
+
+5.  **Launch the audit dashboard** (separate terminal, daemons must be running):
+    ```bash
+    python monitor/public_verifier/server.py
+    # Default port: 7777  |  Custom port: --port 8080
+    ```
+    Then open `http://localhost:7777` in a browser.
+
+    | Route | Content |
+    |-------|---------|
+    | `/` | Live trade queue dashboard — pending proposals, firewall status, execution results |
+    | `/verifier` | Public audit-chain verifier — paste any receipt hash to re-derive and verify the full decision trace from 0G storage |
+    | `/api/audit-chain` | JSON: current head hash + last N audit entries |
+    | `/api/messages` | JSON: recent AXL bus messages by topic |
+    | `/api/treasury` | JSON: Safe balance snapshot |
+
+    To open the HTML files directly without the server (read-only, no live data):
+    ```bash
+    open monitor/public_verifier/index.html      # macOS
+    start monitor/public_verifier/index.html     # Windows
+    ```
 
 Daemons fail-closed if `DEMO_MODE=1` and their AXL node is unreachable. Restart nodes with `bash scripts/setup_axl.sh` if needed.
 
