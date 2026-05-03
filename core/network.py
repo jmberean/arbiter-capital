@@ -193,7 +193,6 @@ class MockAXLNode:
                     except Exception as e:
                         logger.warning(f"AXL send to {peer[:12]}... failed: {e}")
                 logger.info(f"AXL publish: topic={topic} sent_to={sent}/{len(peer_keys)} peers")
-                return
 
         self._write_to_db(topic, payload, envelope)
 
@@ -231,6 +230,12 @@ class MockAXLNode:
                     if verified:
                         with self._inbox_lock:
                             self._inbox.setdefault(msg_topic, []).append(msg)
+                        
+                        # Also write to local DB so non-P2P monitors (like the CLI) can see it
+                        try:
+                            self._write_to_db(msg_topic, msg["payload"], msg["envelope"])
+                        except Exception as e:
+                            logger.debug(f"Failed to mirrored received message to DB: {e}")
                     else:
                         logger.warning("AXL recv: dropping unverified message topic=%s sender=%s",
                                        msg_topic, msg.get("sender", "?")[:16])

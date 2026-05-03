@@ -66,8 +66,8 @@ def build_permit2_input(
 ) -> bytes:
     """Encodes the bytes input for a CMD_PERMIT2_PERMIT command."""
     return encode(
-        ["(address,uint160,uint48,uint48)", "address", "bytes"],
-        [(token, amount_units, expiration, nonce), spender, signature],
+        ["((address,uint160,uint48,uint48),address,uint256)", "bytes"],
+        [((token, amount_units, expiration, nonce), spender, expiration), signature],
     )
 
 

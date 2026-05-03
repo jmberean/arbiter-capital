@@ -261,6 +261,8 @@ def run_patriarch_daemon():
                                     safe_tx_hash=reviewed_proposal.safe_tx_hash,
                                     timestamp=time.time(),
                                 )
+                                import time as _time
+                                _time.sleep(1.0)
                                 axl_node.publish(
                                     topic="CONSENSUS_SIGNATURES",
                                     payload=consensus_msg.model_dump(),

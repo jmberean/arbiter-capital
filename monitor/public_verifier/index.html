@@ -1,293 +1,374 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Arbiter Capital — Audit Chain Verifier</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"
-          crossorigin="anonymous"></script>
-  <style>
-    :root {
-      --green: #22c55e;
-      --red:   #ef4444;
-      --yellow:#eab308;
-      --bg:    #0f172a;
-      --surface: #1e293b;
-      --border: #334155;
-      --text:  #e2e8f0;
-      --muted: #94a3b8;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arbiter Capital — Operations Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        :root {
+            --glow-green: 0 0 10px rgba(34, 197, 94, 0.4);
+            --glow-blue: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
 
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 1rem 1.5rem;
-      display: flex; align-items: center; gap: 1rem;
-    }
-    header h1 { font-size: 1.1rem; }
-    header .subtitle { color: var(--muted); font-size: 0.85rem; }
+        body {
+            background-color: #050505;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+        }
 
-    #badge {
-      padding: 0.5rem 1.2rem;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      font-weight: bold;
-      margin-left: auto;
-      background: #1a2535;
-      color: var(--muted);
-    }
-    #badge.ok  { background: #052e16; color: var(--green); border: 1px solid var(--green); }
-    #badge.err { background: #2d0606; color: var(--red);   border: 1px solid var(--red);   }
-    #badge.loading { background: #1c1a05; color: var(--yellow); border: 1px solid var(--yellow); }
+        .mono { font-family: 'JetBrains Mono', monospace; }
 
-    main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+        .dashboard-card {
+            background: rgba(17, 24, 39, 0.7);
+            border: 1px solid #1f2937;
+            backdrop-filter: blur(8px);
+        }
 
-    #status-bar {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1.5rem;
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-    #status-bar span { color: var(--text); }
+        .node-online {
+            box-shadow: var(--glow-green);
+        }
 
-    #receipt-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .log-entry:hover {
+            background: rgba(31, 41, 55, 0.5);
+        }
 
-    .receipt-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.9rem 1rem;
-      font-size: 0.8rem;
-    }
-    .receipt-card.ok  { border-left: 3px solid var(--green); }
-    .receipt-card.err { border-left: 3px solid var(--red);   }
-    .receipt-card.attack { border-left: 3px solid var(--red); background: #1a0808; }
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-    .receipt-header {
-      display: flex; align-items: center; gap: 0.75rem;
-      margin-bottom: 0.5rem;
-    }
-    .receipt-type {
-      background: #0f172a; border: 1px solid var(--border);
-      border-radius: 4px; padding: 0.15rem 0.5rem;
-      font-size: 0.7rem; color: var(--yellow);
-    }
-    .receipt-id { color: var(--muted); }
-    .receipt-hash-ok   { margin-left: auto; color: var(--green); }
-    .receipt-hash-fail { margin-left: auto; color: var(--red);   }
-
-    .receipt-body { color: var(--muted); line-height: 1.6; }
-    .receipt-body .field { display: flex; gap: 0.5rem; }
-    .receipt-body .label { color: var(--text); min-width: 120px; }
-    .hash-val { font-size: 0.7rem; word-break: break-all; }
-
-    .link { color: #60a5fa; text-decoration: none; }
-    .link:hover { text-decoration: underline; }
-
-    #reload-btn {
-      background: var(--surface); border: 1px solid var(--border);
-      color: var(--text); border-radius: 6px; padding: 0.4rem 1rem;
-      cursor: pointer; font-family: inherit; font-size: 0.85rem;
-    }
-    #reload-btn:hover { background: var(--border); }
-
-    .error-msg { color: var(--red); padding: 1rem; text-align: center; }
-  </style>
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-soft { animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
 </head>
-<body>
+<body x-data="dashboard()">
+    <!-- Top Header -->
+    <header class="h-16 border-b border-gray-800 bg-black flex items-center px-6 sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                <i class="fas fa-shield-halved text-white text-sm"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight">ARBITER CAPITAL</h1>
+                <p class="text-[10px] text-gray-500 mono uppercase tracking-widest leading-none">Autonomous Family Office • v5.0</p>
+            </div>
+        </div>
 
-<header>
-  <div>
-    <h1>Arbiter Capital — Audit Chain Verifier</h1>
-    <div class="subtitle">Tamper-evident 0G audit chain · Browser-side keccak256 integrity</div>
-  </div>
-  <button id="reload-btn" onclick="runVerification()">⟳ Refresh</button>
-  <div id="badge" class="loading">⏳ Loading…</div>
-</header>
+        <div class="ml-auto flex items-center gap-6">
+            <div class="text-right">
+                <p class="text-[10px] text-gray-500 mono uppercase">Treasury Safe</p>
+                <p class="text-xs text-blue-400 mono" x-text="data.safe_address">0x...</p>
+            </div>
+            <div class="flex items-center gap-2 bg-gray-900 border border-gray-800 px-3 py-1.5 rounded-full">
+                <div class="w-2 h-2 rounded-full" :class="connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></div>
+                <span class="text-[10px] font-bold mono" x-text="connected ? 'LIVE NETWORK' : 'DISCONNECTED'"></span>
+            </div>
+            <a href="/verifier" class="text-xs bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded border border-gray-700 transition-colors">
+                <i class="fas fa-search-nodes mr-2"></i>Audit Chain
+            </a>
+        </div>
+    </header>
 
-<main>
-  <div id="status-bar">
-    Head: <span id="head-val">—</span> &nbsp;|&nbsp;
-    Receipts walked: <span id="count-val">0</span> &nbsp;|&nbsp;
-    Status: <span id="status-val">Initialising…</span>
-  </div>
-  <div id="receipt-list"></div>
-</main>
+    <main class="p-6 grid grid-cols-12 gap-6 max-w-[1600px] mx-auto">
+        
+        <!-- Left: Node Status & Active Negotiations -->
+        <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- Node Matrix -->
+            <section class="dashboard-card rounded-xl p-5">
+                <h2 class="text-xs font-bold text-gray-500 mono uppercase tracking-wider mb-4">Node Matrix</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <template x-for="node in data.nodes" :key="node.node_id">
+                        <div class="bg-black/40 border border-gray-800 p-3 rounded-lg relative overflow-hidden group">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-semibold mono" x-text="formatNodeName(node.node_id)"></span>
+                                <div class="w-1.5 h-1.5 rounded-full" :class="node.alive ? 'bg-green-500 node-online' : 'bg-gray-700'"></div>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <div class="flex justify-between text-[10px]">
+                                    <span class="text-gray-500">Status</span>
+                                    <span class="text-gray-300" x-text="node.status"></span>
+                                </div>
+                                <div class="flex justify-between text-[10px]">
+                                    <span class="text-gray-500">Latency</span>
+                                    <span class="text-gray-300" x-text="formatLatency(node.last_seen)">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
 
-<script>
-const API_BASE = "";  // same-origin; set to "http://localhost:7777" when opening as file://
+            <!-- Active Negotiations -->
+            <section class="dashboard-card rounded-xl p-5 flex-1 overflow-y-auto max-h-[500px]">
+                <h2 class="text-xs font-bold text-gray-500 mono uppercase tracking-wider mb-4">Live Negotiations</h2>
+                <div class="space-y-4">
+                    <template x-if="data.negotiations.length === 0">
+                        <div class="text-center py-10">
+                            <i class="fas fa-tower-broadcast text-gray-800 text-3xl mb-3"></i>
+                            <p class="text-xs text-gray-600 mono">Waiting for Proposal...</p>
+                        </div>
+                    </template>
+                    <template x-for="neg in data.negotiations" :key="neg.proposal_id">
+                        <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-4 cursor-pointer hover:border-blue-500/50 transition-all" @click="selectedPid = neg.proposal_id">
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-xs font-bold mono text-blue-400" x-text="neg.proposal_id"></span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full mono uppercase border" 
+                                      :class="statusClasses(neg.status)"
+                                      x-text="neg.status"></span>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center text-[10px] mono text-gray-400">
+                                    <span>Consensus Progress</span>
+                                    <span x-text="neg.signatures + '/2 Signatures'"></span>
+                                </div>
+                                <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                                    <div class="h-full bg-blue-500 transition-all duration-500" :style="'width: ' + (neg.signatures/2*100) + '%'"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+        </div>
 
-/* ── Canonical JSON (matches Python's json.dumps(sort_keys=True,
-       separators=(",",":"))). Uses a custom serializer because
-       JSON.stringify accepts no "no spaces + sorted keys" mode. */
-function canonicalJson(value) {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);  // strings keep their internal spaces
-  }
-  if (Array.isArray(value)) {
-    return "[" + value.map(canonicalJson).join(",") + "]";
-  }
-  const keys = Object.keys(value).sort();
-  const parts = keys.map(k => JSON.stringify(k) + ":" + canonicalJson(value[k]));
-  return "{" + parts.join(",") + "}";
-}
+        <!-- Center: Message Feed (The "Useful" Part) -->
+        <div class="col-span-12 lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- Real-time Packet Log -->
+            <section class="dashboard-card rounded-xl flex flex-col h-[600px] overflow-hidden">
+                <div class="p-5 border-b border-gray-800 flex justify-between items-center bg-gray-900/30">
+                    <h2 class="text-xs font-bold text-gray-500 mono uppercase tracking-wider">AXL Network Traffic</h2>
+                    <span class="text-[10px] text-blue-500 mono animate-pulse-soft">● CAPTURING_P2P_PACKETS</span>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto mono text-[11px] p-2 bg-[#080808]">
+                    <template x-for="msg in data.feed" :key="msg.id">
+                        <div class="log-entry flex flex-col py-2 px-3 border-b border-gray-900 transition-all group cursor-pointer" @click="selectedMsg = msg">
+                            <div class="grid grid-cols-12 gap-2 w-full">
+                                <span class="col-span-2 text-gray-600" x-text="formatTime(msg.timestamp)"></span>
+                                <span class="col-span-3 font-bold uppercase" :class="topicColor(msg.topic)" x-text="friendlyEvent(msg.topic)"></span>
+                                <span class="col-span-2 text-blue-400 opacity-80" x-text="formatNodeName(msg.sender)"></span>
+                                <span class="col-span-5 text-gray-400 truncate group-hover:text-gray-200" x-text="summarizePayload(msg)"></span>
+                            </div>
+                            <template x-if="msg.payload.rationale">
+                                <div class="mt-1 pl-12 text-blue-300/60 italic" x-text="'\"' + truncate(msg.payload.rationale, 120) + '\"'"></div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </section>
 
-function keccak256Json(obj) {
-  const bytes = new TextEncoder().encode(canonicalJson(obj));
-  return ethers.keccak256(bytes);
-}
+            <!-- 0G Hash-Chain Visualization -->
+            <section class="dashboard-card rounded-xl p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xs font-bold text-gray-500 mono uppercase tracking-wider">0G Layer 1 Memory Chain</h2>
+                    <span class="text-[10px] text-gray-600 mono">Head: <span class="text-gray-400" x-text="truncate(head, 24)">--</span></span>
+                </div>
+                
+                <div class="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+                    <template x-for="receipt in receipts" :key="receipt.id">
+                        <div class="flex-shrink-0 w-48 bg-gray-900/80 border border-gray-800 rounded-lg p-3 relative group hover:border-blue-500/50 transition-all">
+                            <div class="text-[9px] text-blue-500 font-bold mono mb-1" x-text="receipt.type"></div>
+                            <div class="text-[10px] text-gray-400 mono truncate mb-2" x-text="receipt.id"></div>
+                            <div class="flex justify-between items-center">
+                                <div class="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+                                <span class="text-[9px] text-gray-600 mono" x-text="formatRelTime(receipt.ts)"></span>
+                            </div>
+                            <!-- Connector line -->
+                            <div class="absolute -right-4 top-1/2 w-4 h-[1px] bg-gray-800"></div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+        </div>
+    </main>
 
-/* ── API helpers ─────────────────────────────────────────────────────── */
-async function fetchHead() {
-  const r = await fetch(`${API_BASE}/api/head`);
-  if (!r.ok) throw new Error(`/api/head returned ${r.status}`);
-  return (await r.json()).head;
-}
-
-async function fetchReceipt(hashOrId) {
-  const encoded = encodeURIComponent(hashOrId);
-  const r = await fetch(`${API_BASE}/api/receipt/${encoded}`);
-  if (!r.ok) throw new Error(`/api/receipt/${hashOrId} returned ${r.status}`);
-  return await r.json();
-}
-
-/* ── Integrity check ─────────────────────────────────────────────────── */
-function integrityOk(receipt) {
-  const stored = receipt.receipt_hash;
-  if (!stored) return true;  // pre-v5 receipt
-  const body = Object.fromEntries(
-    Object.entries(receipt).filter(([k]) => k !== "receipt_hash")
-  );
-  const computed = keccak256Json(body);
-  return computed.toLowerCase() === stored.toLowerCase();
-}
-
-/* ── Render helpers ──────────────────────────────────────────────────── */
-function truncate(s, n=24) {
-  if (!s) return "—";
-  s = String(s);
-  return s.length > n ? s.slice(0, n) + "…" : s;
-}
-
-function renderReceipt(receipt, hashId, ok) {
-  const list = document.getElementById("receipt-list");
-  const card = document.createElement("div");
-  const rtype = receipt.receipt_type || "?";
-  const isAttack = rtype === "AttackRejection";
-  card.className = `receipt-card ${isAttack ? "attack" : (ok ? "ok" : "err")}`;
-
-  const payload = receipt.payload || {};
-  let details = "";
-
-  if (rtype === "AttackRejection") {
-    details = `
-      <div class="field"><span class="label">attack_kind</span><span>${payload.attack_kind || "?"}</span></div>
-      <div class="field"><span class="label">detected_by</span><span>${payload.detected_by || "?"}</span></div>
-      <div class="field"><span class="label">detail</span><span>${payload.detail || "—"}</span></div>`;
-  } else if (rtype === "ExecutionReceipt") {
-    details = `
-      <div class="field"><span class="label">tx_hash</span><span class="hash-val">${payload.tx_hash || "—"}</span></div>
-      <div class="field"><span class="label">safe_nonce</span><span>${payload.safe_nonce ?? "—"}</span></div>`;
-  } else if (rtype === "DecisionReceipt") {
-    details = `
-      <div class="field"><span class="label">proposal_id</span><span>${payload.proposal_id || "—"}</span></div>
-      <div class="field"><span class="label">status</span><span>${payload.consensus_status || payload.status || "—"}</span></div>`;
-  } else if (rtype === "LLMContext") {
-    details = `
-      <div class="field"><span class="label">model</span><span>${payload.model_id || "—"}</span></div>
-      <div class="field"><span class="label">agent</span><span>${payload.invoking_agent || "—"}</span></div>`;
-  }
-
-  card.innerHTML = `
-    <div class="receipt-header">
-      <span class="receipt-type">${rtype}</span>
-      <span class="receipt-id">${truncate(receipt.receipt_id, 12)}</span>
-      <span class="${ok ? "receipt-hash-ok" : "receipt-hash-fail"}">${ok ? "✓ hash ok" : "✗ hash FAIL"}</span>
+    <!-- Detailed View Overlay (Modal-ish) -->
+    <div x-show="selectedMsg" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm" x-cloak>
+        <div class="bg-gray-900 border border-gray-700 rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl" @click.away="selectedMsg = null">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
+                <h3 class="text-xs font-bold mono uppercase tracking-widest text-blue-500" x-text="'Packet Detail: ' + (selectedMsg?.topic || '')"></h3>
+                <button @click="selectedMsg = null" class="text-gray-500 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div class="mb-6">
+                    <p class="text-[10px] text-gray-500 mono uppercase mb-2">Sender Rationale / Logic</p>
+                    <div class="bg-black/50 p-4 rounded border border-gray-800 text-sm leading-relaxed text-blue-100 italic" 
+                         x-text="selectedMsg?.payload?.rationale || 'No rationale provided in this packet payload.'"></div>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500 mono uppercase mb-2">Full Payload JSON</p>
+                    <pre class="bg-black/50 p-4 rounded border border-gray-800 text-[10px] text-green-400 overflow-x-auto" x-text="JSON.stringify(selectedMsg?.payload, null, 2)"></pre>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="receipt-body">
-      <div class="field"><span class="label">receipt_id</span><span class="hash-val">${receipt.receipt_id || "—"}</span></div>
-      <div class="field"><span class="label">0g_ref</span><span class="hash-val">${truncate(hashId, 32)}</span></div>
-      <div class="field"><span class="label">prev_hash</span><span class="hash-val">${truncate(receipt.prev_0g_tx_hash || "genesis", 32)}</span></div>
-      ${details}
-    </div>`;
-  list.prepend(card);  // newest at top
-}
 
-/* ── Main verification loop ──────────────────────────────────────────── */
-async function runVerification() {
-  const badge   = document.getElementById("badge");
-  const headEl  = document.getElementById("head-val");
-  const countEl = document.getElementById("count-val");
-  const statusEl= document.getElementById("status-val");
-  const list    = document.getElementById("receipt-list");
+    <!-- Negotiation Logic View -->
+    <div x-show="selectedPid" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm" x-cloak>
+        <div class="bg-gray-900 border border-gray-700 rounded-xl max-w-4xl w-full max-h-[80vh] flex flex-col shadow-2xl" @click.away="selectedPid = null">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
+                <h3 class="text-xs font-bold mono uppercase tracking-widest text-blue-500" x-text="'Negotiation Logic: ' + selectedPid"></h3>
+                <button @click="selectedPid = null" class="text-gray-500 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-6">
+                <template x-for="msg in Array.from(new Map(data.feed.filter(m => m.payload.proposal_id === selectedPid || m.payload.root_proposal_id === selectedPid).map(m => [m.topic + JSON.stringify(m.payload), m])).values()).sort((a,b) => a.timestamp - b.timestamp)">
+                    <div class="border-l-2 pl-4" :class="topicBorder(msg.topic)">
+                        <div class="flex justify-between text-[10px] mono mb-1">
+                            <span :class="topicColor(msg.topic)" x-text="friendlyEvent(msg.topic)"></span>
+                            <span class="text-gray-600" x-text="formatTime(msg.timestamp) + ' from ' + formatNodeName(msg.sender)"></span>
+                        </div>
+                        <div class="text-xs text-gray-300 bg-black/30 p-2 rounded" x-text="msg.payload.rationale || summarizePayload(msg)"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
 
-  list.innerHTML = "";
-  badge.className = "loading";
-  badge.textContent = "⏳ Loading…";
-  statusEl.textContent = "Fetching head…";
+    <script>
+        function dashboard() {
+            return {
+                data: {
+                    nodes: [],
+                    feed: [],
+                    negotiations: [],
+                    safe_address: "0x...",
+                    server_time: Date.now() / 1000
+                },
+                head: null,
+                receipts: [],
+                connected: false,
+                selectedMsg: null,
+                selectedPid: null,
+                
+                init() {
+                    this.poll();
+                    setInterval(() => this.poll(), 2000);
+                },
 
-  let head;
-  try {
-    head = await fetchHead();
-  } catch (e) {
-    badge.className = "err";
-    badge.textContent = "✗ FETCH ERROR";
-    statusEl.textContent = e.message;
-    list.innerHTML = `<div class="error-msg">Could not reach verifier API.<br/>Start the server: <code>python monitor/public_verifier/server.py</code></div>`;
-    return;
-  }
+                async poll() {
+                    try {
+                        const [dashRes, headRes, receiptsRes] = await Promise.all([
+                            fetch('/api/dashboard'),
+                            fetch('/api/head'),
+                            fetch('/api/receipts')
+                        ]);
 
-  if (!head) {
-    badge.className = "loading";
-    badge.textContent = "⚠ NO CHAIN";
-    statusEl.textContent = "No audit chain head found. Run some proposals first.";
-    return;
-  }
+                        if (dashRes.ok) {
+                            this.data = await dashRes.json();
+                            this.connected = true;
+                        }
+                        
+                        if (headRes.ok) {
+                            const h = await headRes.json();
+                            this.head = h.head;
+                        }
 
-  headEl.textContent = truncate(head, 32);
-  let cur = head;
-  let count = 0;
-  let allOk = true;
-  const MAX = 50;
+                        if (receiptsRes.ok) {
+                            const r = await receiptsRes.json();
+                            this.receipts = r.receipts;
+                        }
+                    } catch (e) {
+                        console.error("Poll failed", e);
+                        this.connected = false;
+                    }
+                },
 
-  while (cur && count < MAX) {
-    statusEl.textContent = `Walking… receipt #${count+1}`;
-    let receipt;
-    try {
-      receipt = await fetchReceipt(cur);
-    } catch (e) {
-      badge.className = "err";
-      badge.textContent = `✗ CHAIN BROKEN at #${count+1}`;
-      statusEl.textContent = e.message;
-      allOk = false;
-      break;
-    }
+                formatNodeName(id) {
+                    return id.replace('_Node_', ' ').replace('Execution_Node_P', 'Executor ');
+                },
 
-    const ok = integrityOk(receipt);
-    if (!ok) allOk = false;
-    renderReceipt(receipt, cur, ok);
-    count++;
-    countEl.textContent = count;
+                formatLatency(ts) {
+                    const diff = this.data.server_time - ts;
+                    if (diff < 1) return '1ms';
+                    return Math.floor(diff) + 's';
+                },
 
-    cur = receipt.prev_0g_tx_hash || null;
-  }
+                formatTime(ts) {
+                    const d = new Date(ts * 1000);
+                    return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                },
 
-  if (allOk) {
-    badge.className = "ok";
-    badge.textContent = `✓ CHAIN VERIFIED — ${count} receipts`;
-    statusEl.textContent = `All ${count} receipts passed integrity check.`;
-  } else {
-    badge.className = "err";
-    badge.textContent = `✗ INTEGRITY FAIL`;
-  }
-}
+                formatRelTime(ts) {
+                    if (!ts) return '';
+                    const diff = Math.floor(this.data.server_time - ts);
+                    if (diff < 60) return diff + 's ago';
+                    return Math.floor(diff/60) + 'm ago';
+                },
 
-window.addEventListener("DOMContentLoaded", runVerification);
-</script>
+                truncate(s, n=16) {
+                    if (!s) return '';
+                    return s.length > n ? s.slice(0, n) + '...' : s;
+                },
+
+                topicColor(t) {
+                    const colors = {
+                        'HEARTBEAT': 'text-gray-500',
+                        'MARKET_DATA': 'text-yellow-500',
+                        'PROPOSALS': 'text-blue-500',
+                        'CONSENSUS_SIGNATURES': 'text-green-500',
+                        'EXECUTION_SUCCESS': 'text-purple-500',
+                        'ATTACK_REJECTED': 'text-red-500',
+                        'PROPOSAL_EVALUATIONS': 'text-orange-400'
+                    };
+                    return colors[t] || 'text-gray-400';
+                },
+
+                friendlyEvent(t) {
+                    const names = {
+                        'HEARTBEAT': 'Node Online',
+                        'MARKET_DATA': 'Market Shift Detected',
+                        'PROPOSALS': 'New Trade Proposed',
+                        'CONSENSUS_SIGNATURES': 'Signature Collected',
+                        'EXECUTION_SUCCESS': 'Execution Successful',
+                        'ATTACK_REJECTED': 'Adversary Attack Blocked',
+                        'PROPOSAL_EVALUATIONS': 'Agent Reasoning',
+                        'SIM_ORACLE_REQUEST': 'Safety Simulation'
+                    };
+                    return names[t] || t;
+                },
+
+                summarizePayload(msg) {
+                    const p = msg.payload;
+                    const t = msg.topic;
+                    if (t === 'MARKET_DATA') return `Scenario: ${p.scenario_name || 'Generic Volatility'}`;
+                    if (t === 'PROPOSALS') return `Swap ${p.amount_in_units/1e18} ${p.asset_in} for ${p.asset_out}`;
+                    if (t === 'CONSENSUS_SIGNATURES') return `Agent ${this.formatNodeName(msg.sender)} signed Proposal ${p.proposal_id}`;
+                    if (t === 'EXECUTION_SUCCESS') return `On-chain Tx: ${this.truncate(p.tx_hash, 14)}`;
+                    if (t === 'ATTACK_REJECTED') return `Reason: ${p.rejection_reason}`;
+                    if (t === 'PROPOSAL_EVALUATIONS') return p.rationale ? this.truncate(p.rationale, 80) : p.status;
+                    return JSON.stringify(p);
+                },
+
+                topicBorder(t) {
+                    const colors = {
+                        'PROPOSALS': 'border-blue-500',
+                        'PROPOSAL_EVALUATIONS': 'border-orange-500',
+                        'CONSENSUS_SIGNATURES': 'border-green-500',
+                        'EXECUTION_SUCCESS': 'border-purple-500',
+                        'ATTACK_REJECTED': 'border-red-500'
+                    };
+                    return colors[t] || 'border-gray-800';
+                },
+
+                statusClasses(s) {
+                    if (s === 'executed') return 'text-green-500 border-green-500/30 bg-green-500/5';
+                    if (s === 'attack_blocked') return 'text-red-500 border-red-500/30 bg-red-500/5';
+                    return 'text-blue-500 border-blue-500/30 bg-blue-500/5 animate-pulse';
+                }
+            }
+        }
+    </script>
 </body>
 </html>

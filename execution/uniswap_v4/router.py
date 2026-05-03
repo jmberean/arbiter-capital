@@ -51,7 +51,7 @@ class UniswapV4Router:
 
         hook_addr = (
             os.getenv("ARBITER_THROTTLE_HOOK", "0x0000000000000000000000000000000000000000")
-            if proposal.v4_hook_required
+            if proposal.v4_hook_required and proposal.v4_hook_required.lower() not in ("false", "none", "0", "")
             else "0x0000000000000000000000000000000000000000"
         )
         return (addr0, addr1, 3000, 60, hook_addr)  # 0.3% fee, tickSpacing=60

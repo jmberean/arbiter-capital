@@ -109,7 +109,7 @@ set in its low 14 bits (CREATE2 salt mining required).
   - [x] a. `V4_POOL_MANAGER=0x000000000004444c5dc75cb358380d2e3de08a90` — added (verify still current before deploy).
   - [x] b. `PERMIT2_ADDRESS=0x000000000022D473030F116dDEE9F6B43aC78BA3` — added (canonical cross-chain).
   - [x] c. `SEPOLIA_RPC=https://rpc.ankr.com/eth_sepolia` — added (mirrors existing `ETH_RPC_URL`; swap for Alchemy/Infura endpoint for reliability under load).
-  - [x] d. `UNIVERSAL_ROUTER_ADDRESS=0x66a9893cc07d91d95644aedd05d03f95e1dba8af` — confirmed (Uniswap v4 Sepolia).
+  - [x] d. `UNIVERSAL_ROUTER_ADDRESS=0x3A9D48AB9751398BbFa63ad67599Bb04e4BdF98b` — confirmed (Uniswap v4 Sepolia).
   - [x] e. `ETHERSCAN_API_KEY` — add from etherscan.io/myapikey.
 - [x] 4. `script/HookMiner.s.sol` written and run ✓. Salt mined in 3831 iterations.
    - `HOOK_SALT=0x0000000000000000000000000000000000000000000000000000000000000ef7`

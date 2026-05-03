@@ -75,6 +75,8 @@ def run_quant_daemon():
                     # Publish Quant's own consensus signature so Execution Node can collect it
                     cmsg = _quant_consensus_msg(proposal)
                     if cmsg:
+                        import time as _time
+                        _time.sleep(1.0)
                         axl_node.publish(topic="CONSENSUS_SIGNATURES", payload=cmsg.model_dump())
                         logger.info(f"Published Quant CONSENSUS_SIGNATURE for {proposal.proposal_id}")
 
@@ -120,8 +122,9 @@ def run_quant_daemon():
 
                                 cmsg = _quant_consensus_msg(new_proposal)
                                 if cmsg:
-                                    axl_node.publish(topic="CONSENSUS_SIGNATURES", payload=cmsg.model_dump())
-
+                                   import time as _time
+                                   _time.sleep(1.0)
+                                   axl_node.publish(topic="CONSENSUS_SIGNATURES", payload=cmsg.model_dump())
                                 proposal_history[new_proposal.proposal_id] = {
                                     "market_data": history["market_data"],
                                     "iteration": result.get("iteration", history["iteration"] + 1),
