@@ -25,11 +25,11 @@ DB_PATH = ROOT / "axl_network.db"
 PID_FILE = ROOT / "state" / "daemon_pids.txt"
 
 DAEMONS = [
-    ("Quant",     "quant_process.py",       "AXL_NODE_KEY_QUANT"),
-    ("Patriarch", "patriarch_process.py",   "AXL_NODE_KEY_PATRIARCH"),
-    ("Execution", "execution_process.py",   "AXL_NODE_KEY_EXEC"),
-    ("Watchdog",  "byzantine_watchdog.py",  "AXL_NODE_KEY_WATCHDOG"),
-    ("Monitor",   "monitor_network.py",     "AXL_NODE_KEY_EXEC"),
+    ("Quant",     "apps/quant_process.py",       "AXL_NODE_KEY_QUANT"),
+    ("Patriarch", "apps/patriarch_process.py",   "AXL_NODE_KEY_PATRIARCH"),
+    ("Execution", "apps/execution_process.py",   "AXL_NODE_KEY_EXEC"),
+    ("Watchdog",  "apps/byzantine_watchdog.py",  "AXL_NODE_KEY_WATCHDOG"),
+    ("Monitor",   "apps/monitor_network.py",     "AXL_NODE_KEY_EXEC"),
 ]
 
 SCENARIOS = ["flash_crash_eth", "pendle_yield_arbitrage", "protocol_hack",
@@ -142,7 +142,7 @@ def wait_for_ready(timeout: int = 30):
 def inject(scenario: str):
     print(f"\n{bold('Injecting:')} {scenario}")
     result = subprocess.run(
-        [PYTHON, str(ROOT / "market_injector.py"), scenario],
+        [PYTHON, str(ROOT / "apps" / "market_injector.py"), scenario],
         cwd=str(ROOT),
     )
     if result.returncode != 0:
@@ -206,7 +206,7 @@ def interactive_menu():
                        cwd=str(ROOT))
 
     elif choice == "4":
-        subprocess.run([PYTHON, str(ROOT / "verify_audit.py"), "--walk-from-head"],
+        subprocess.run([PYTHON, str(ROOT / "apps" / "verify_audit.py"), "--walk-from-head"],
                        cwd=str(ROOT))
 
     elif choice == "0":

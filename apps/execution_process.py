@@ -6,7 +6,7 @@ import time
 import threading
 
 from dotenv import load_dotenv
-load_dotenv()  # must run before core.identity is imported so keys are available at eval time
+load_dotenv(override=True)  # must run before core.identity is imported so keys are available at eval time
 from eth_utils import keccak
 
 from core.crypto import recover_signer
@@ -271,5 +271,5 @@ def run_execution_daemon():
 
 
 if __name__ == "__main__":
-    load_dotenv()
+    load_dotenv(override=True)
     run_execution_daemon()

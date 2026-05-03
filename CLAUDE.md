@@ -53,20 +53,20 @@ $env:PYTHONPATH="C:\Workspace\arbiter-capital"; $env:SAFE_ADDRESS=""; python scr
 python scripts/start_all.py --stop
 
 # Inject a market scenario and trigger agent flow
-python market_injector.py flash_crash_eth
+python apps/market_injector.py flash_crash_eth
 # Scenarios: flash_crash_eth | pendle_yield_arbitrage | protocol_hack | gas_war | lst_expansion
 
 # Run processes manually (each in a separate terminal, PYTHONPATH set)
-python quant_process.py
-python patriarch_process.py
-python execution_process.py
-python byzantine_watchdog.py
+python apps/quant_process.py
+python apps/patriarch_process.py
+python apps/execution_process.py
+python apps/byzantine_watchdog.py
 
 # Bounty compliance gate
 python scripts/check_bounty_compliance.py
 
 # Audit chain verifier
-python verify_audit.py
+python apps/verify_audit.py
 ```
 
 **For local mock runs** (no testnet, no real AXL nodes): set `DEMO_MODE=0` in `.env` and override `SAFE_ADDRESS=""`. The AXL URLs in `.env` point to localhost — they will fail-over to SQLite automatically.

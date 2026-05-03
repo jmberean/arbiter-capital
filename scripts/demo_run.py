@@ -39,7 +39,7 @@ def _db_count(sql: str, params: tuple = ()) -> int:
 def inject(scenario: str):
     """Run market_injector.py in a subprocess (non-blocking — the daemon processes do the work)."""
     print(f"  → inject {scenario}")
-    subprocess.run([sys.executable, str(ROOT / "market_injector.py"), scenario], check=True)
+    subprocess.run([sys.executable, str(ROOT / "apps" / "market_injector.py"), scenario], check=True)
 
 
 def wait_for(description: str, predicate, timeout_s: int, poll_s: float = 1.5):
@@ -83,7 +83,7 @@ def step_watchdog_sequence(timeout: int = 35):
     """Run all 6 Byzantine attacks and assert 6 ATTACK_REJECTED receipts appear."""
     b = baseline("ATTACK_REJECTED")
     print("  → byzantine_watchdog --attack-sequence")
-    subprocess.Popen([sys.executable, str(ROOT / "byzantine_watchdog.py"), "--attack-sequence"])
+    subprocess.Popen([sys.executable, str(ROOT / "apps" / "byzantine_watchdog.py"), "--attack-sequence"])
     def got_six():
         n = _db_count("SELECT COUNT(*) FROM messages WHERE topic='ATTACK_REJECTED'")
         new = n - b
@@ -124,7 +124,7 @@ def step_verify_chain(min_receipts: int = 12, timeout: int = 30):
     """Run verify_audit.py --walk-from-head and assert CHAIN VERIFIED."""
     print("  → verify_audit.py --walk-from-head")
     result = subprocess.run(
-        [sys.executable, str(ROOT / "verify_audit.py"), "--walk-from-head"],
+        [sys.executable, str(ROOT / "apps" / "verify_audit.py"), "--walk-from-head"],
         capture_output=True, text=True, timeout=timeout,
     )
     output = result.stdout + result.stderr

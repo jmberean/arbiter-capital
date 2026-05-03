@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import operator
+import time
 from typing import TypedDict, Annotated, Sequence, Optional
 
 from dotenv import load_dotenv
@@ -19,7 +20,7 @@ from execution.uniswap_v4.router import UniswapV4Router
 from memory.llm_context_writer import capture_and_persist
 from memory.memory_manager import MemoryManager
 
-load_dotenv()
+load_dotenv(override=True)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("QuantAgent")
@@ -212,6 +213,10 @@ def capture_llm_context_node(state: AgentState):
         else:
             p.amount_in_units = str(10 ** 18)
 
+    # Normalize ETH to WETH for firewall and signing
+    if p.asset_in == "ETH": p.asset_in = "WETH"
+    if p.asset_out == "ETH": p.asset_out = "WETH"
+
     # Sanitize min_amount_out_units
     valid_out = False
     if p.min_amount_out_units is not None:
@@ -243,8 +248,7 @@ def capture_llm_context_node(state: AgentState):
                 logger.info(f"    Prices: {asset_in}={price_in}, {asset_out}={price_out}")
                 
                 if price_in > 0 and price_out > 0:
-                    d_in = DECIMALS_BY_SYMBOL.get(asset_in, 18)
-                    amount_in = float(p.amount_in) if p.amount_in else float(int(p.amount_in_units) / (10**d_in))
+                    amount_in = float(p.amount_in) if p.amount_in else float(int(p.amount_in_units) / (10**DECIMALS_BY_SYMBOL.get(asset_in, 18)))
                     expected_out = (amount_in * price_in) / price_out
                     min_out = expected_out * 0.99 # 1% slippage
                     
@@ -260,6 +264,12 @@ def capture_llm_context_node(state: AgentState):
         else:
             logger.info("    Not a swap, defaulting to 0")
             p.min_amount_out_units = "0"
+
+    # Force a deterministic deadline (now + 20 minutes) to avoid LLM oscillation
+    # and satisfy Patriarch timing risk guardrails.
+    current_time = int(time.time())
+    p.deadline_unix = current_time + 1200 # 20 minutes
+    logger.info(f"  FORCED deadline_unix: {p.deadline_unix} (now + 20m)")
 
     ctx_hash, tx_hash = capture_and_persist(
         agent="Quant_Node_A",

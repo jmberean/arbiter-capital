@@ -7,7 +7,7 @@ import time
 import uuid
 
 from dotenv import load_dotenv
-load_dotenv()  # must run before core.identity is imported so keys are available at eval time
+load_dotenv(override=True)  # must run before core.identity is imported so keys are available at eval time
 
 from core.crypto import (
     proposal_eip712_digest, bundle_hash, sign_digest, recover_signer,
@@ -299,5 +299,5 @@ def run_patriarch_daemon():
 
 
 if __name__ == "__main__":
-    load_dotenv()
+    load_dotenv(override=True)
     run_patriarch_daemon()

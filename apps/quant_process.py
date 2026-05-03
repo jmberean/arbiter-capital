@@ -4,7 +4,7 @@ import json
 import uuid
 import os
 from dotenv import load_dotenv
-load_dotenv()  # must run before core.identity is imported so keys are available at eval time
+load_dotenv(override=True)  # must run before core.identity is imported so keys are available at eval time
 from core.network import MockAXLNode
 from core.models import Proposal, ConsensusStatus, ConsensusMessage
 from core.identity import QUANT_ADDR
@@ -140,7 +140,7 @@ def run_quant_daemon():
 
 
 if __name__ == "__main__":
-    load_dotenv()
+    load_dotenv(override=True)
     if not os.getenv("OPENAI_API_KEY"):
         logger.error("CRITICAL: OPENAI_API_KEY environment variable is not set.")
         exit(1)
