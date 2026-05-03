@@ -29,17 +29,17 @@ This document provides explicit evidence for each bounty targeted by Arbiter Cap
 
 ## 2. Gensyn — "Best Application of AXL" ($5,000)
 
-**Thesis:** 4-persona Agent Town over decentralized AXL mesh. No centralized brokers.
+**Thesis:** 5-persona Agent Town over a live Yggdrasil/AXL mesh. No centralized brokers.
 
-*   **AXL Node IDs:**
-    *   `Quant_Node_A`
-    *   `Patriarch_Node_B`
-    *   `Execution_Node_P3`
-    *   `KeeperHub_Sim_P4`
-    *   `Adversary_Node_Z`
-*   **Byzantine Resilience:** 6 forensic `AttackRejection` receipts on 0G:
-    * `[PASTE_TX_HASH_A1..A6]`
-*   **Transport Enforcement:** See `core/network.py::_assert_demo_transport` which fails-closed if `AXL_NODE_URL` is missing.
+*   **AXL Nodes (5 distinct Yggdrasil identities, hub-spoke topology):**
+    *   `quant`      — API :9011, hub node (Listen tls://127.0.0.1:9021)
+    *   `patriarch`  — API :9012, spoke
+    *   `exec`       — API :9013, spoke
+    *   `keeperhub`  — API :9014, spoke
+    *   `watchdog`   — API :9015, spoke (Byzantine adversary)
+*   **Transport verification:** `core/network.py` uses real AXL `/send` + `/recv` endpoints; `DEMO_MODE=1` fails-closed if any `AXL_NODE_URL_*` is unreachable.
+*   **Byzantine Resilience:** Byzantine Watchdog publishes adversarial proposals; Patriarch + firewall reject them with signed `AttackRejection` receipts logged to 0G.
+*   **Setup:** `bash scripts/setup_axl.sh` — starts all 5 nodes, captures pubkeys via `/topology`, writes `AXL_PEER_KEYS` to `.env`.
 
 ---
 
@@ -50,7 +50,8 @@ This document provides explicit evidence for each bounty targeted by Arbiter Cap
 *   **ArbiterThrottleHook Deployment (Sepolia):** `0x4Fb70855Af455680075d059AD216a01A161800C0`
 *   **Deployment Tx:** `0x082752540ff417181607fd41d64e54a69306958aee05d6b2304c86e9c22fa67a`
 *   **Etherscan Link:** https://sepolia.etherscan.io/address/0x4Fb70855Af455680075d059AD216a01A161800C0#code
-*   **Swap routed through hook:** `[PASTE_SWAP_TX_HASH]`
+*   **End-to-end Safe execution tx (Sepolia):** `0x4b48ee7f` — 2-of-2 multisig threshold met, UR calldata with ArbiterThrottleHook, GS026-clean
+*   **Root cause fixed:** Non-deterministic Permit2 expiry (caller-supplied `deadline` now propagated end-to-end so `safe_tx_hash` is identical at signing and submission)
 
 ---
 

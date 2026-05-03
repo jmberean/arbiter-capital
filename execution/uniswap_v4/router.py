@@ -2,6 +2,7 @@ import os
 import logging
 from eth_abi import encode
 from eth_utils import keccak
+from web3 import Web3
 from core.models import Proposal, ActionType
 from execution.uniswap_v4.universal_router import (
     CMD_V4_SWAP,
@@ -36,6 +37,10 @@ SWAP_SELECTOR = CMD_V4_SWAP  # single-byte command; full calldata selector is UR
 class UniswapV4Router:
     """Generates Universal Router calldata for Uniswap v4 interactions."""
 
+    def __init__(self, w3: Web3 | None = None, owner: str | None = None):
+        self.w3 = w3
+        self.owner = owner
+
     def _get_pool_key(self, proposal: Proposal) -> tuple:
         addr0 = ASSET_MAP.get(proposal.asset_in, WETH_SEPOLIA)
         addr1 = ASSET_MAP.get(proposal.asset_out or "USDC", USDC_SEPOLIA)
@@ -68,17 +73,17 @@ class UniswapV4Router:
         asset_in_addr = ASSET_MAP.get(proposal.asset_in, WETH_SEPOLIA)
         zero_for_one = int(pool_key[0], 16) == int(asset_in_addr, 16)
 
-        # Negative amount = exact-input swap
-        amount_specified = -int(proposal.amount_in_units)
+        amount_in = int(proposal.amount_in_units)
+        v4_input = build_v4_swap_input(pool_key, zero_for_one, amount_in)
 
-        v4_input = build_v4_swap_input(pool_key, zero_for_one, amount_specified)
-
-        # Check Permit2 allowance (no w3 in mock mode → always requests permit)
         ur_addr = os.getenv("UNIVERSAL_ROUTER_ADDRESS", "0x" + "0" * 40)
         needs_permit, permit_input = ensure_permit2_approval(
             token=asset_in_addr,
-            amount_units=int(proposal.amount_in_units),
+            amount_units=amount_in,
             spender=ur_addr,
+            owner=self.owner,
+            w3=self.w3,
+            deadline=proposal.deadline_unix,
         )
 
         if needs_permit:

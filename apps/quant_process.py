@@ -37,7 +37,10 @@ def run_quant_daemon():
     logger.info("Initializing Quant Process (Node A)...")
     axl_node = MockAXLNode(node_id="Quant_Node_A", url_env="AXL_NODE_URL_QUANT")
     treasury = SafeTreasury()
-    router = UniswapV4Router()
+    router = UniswapV4Router(  # noqa: F841 — kept for potential future use in this process
+        w3=treasury.w3 if not treasury.mock_mode else None,
+        owner=treasury.safe_address if not treasury.mock_mode else None,
+    )
 
     last_market_id = 0
     last_feedback_id = 0

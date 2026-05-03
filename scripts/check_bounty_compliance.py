@@ -107,7 +107,7 @@ def check_compliance():
           "(Proposal.eip712_message helper)")
 
     # 11. Byzantine Watchdog — all 6 attacks
-    wd = _read("byzantine_watchdog.py")
+    wd = _read("apps/byzantine_watchdog.py")
     check("watchdog.all_attacks",
           all(f"attack_A{i}" in wd for i in range(1, 7)),
           "(A1-A6 all present)")
@@ -116,7 +116,7 @@ def check_compliance():
           "(A2 targets a real settled nonce)")
 
     # 12. verify_audit --walk-from-head + reorg awareness
-    va = _read("verify_audit.py")
+    va = _read("apps/verify_audit.py")
     check("audit.walk_from_head", "walk_from_head" in va and "walk_chain" in va,
           "(verify_audit.py chain walk)")
     check("audit.reorg_aware",
@@ -150,7 +150,7 @@ def check_compliance():
           "(no hardcoded nonce=0)")
 
     # 16. Execution — SBT mint + ExecutionReceipt
-    exe = _read("execution_process.py")
+    exe = _read("apps/execution_process.py")
     check("execution.sbt_mint",
           "_mint_sbt" in exe and "mintReceipt" in exe,
           "(SBT minted on success)")

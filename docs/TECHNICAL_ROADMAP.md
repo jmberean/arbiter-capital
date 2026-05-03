@@ -17,7 +17,7 @@ This roadmap is a **drop-in implementation playbook**. v5.0 layers five elite fe
   - [x] Step 0.1 — Fix `eth_account` signing API
   - [x] Step 0.2 — Fix web3 7.15 attribute
   - [x] Step 0.3 — Fix test suite collection
-  - [x] Step 0.4 — Live Gensyn AXL deployment (Blocked by binary port conflict; using SQLite simulation for demo)
+  - [x] Step 0.4 — Live Gensyn AXL deployment ✓ COMPLETE — 5-node Yggdrasil mesh running on distinct ports (9011-9015), real AXL transport verified e2e
   - [x] Step 0.5 — State directory + cursor persistence
 - [3. Day 2 — MVP 6.1: EIP-712 + Identity Registry + Quant Signing + LLMContext Capture](#3-day-2--mvp-61-eip-712--identity-registry--quant-signing--llmcontext-capture)
   - [x] Step 1.1 — Crypto utilities
@@ -47,7 +47,7 @@ This roadmap is a **drop-in implementation playbook**. v5.0 layers five elite fe
   - [x] Step 5.1 — Deploy 2-of-2 Safe on Sepolia
   - [x] Step 5.2 — Enable KeeperHub Module
   - [x] Step 5.3 — KeeperHub Sim Oracle ✱ elite-3
-  - [ ] Step 5.4 — End-to-end live tx
+  - [x] Step 5.4 — End-to-end live tx ✓ COMPLETE — Sepolia Safe tx 0x4b48ee7f verified, GS026 root cause (non-deterministic Permit2 expiry) fixed
   - [x] Step 5.5 — `langchain_keeperhub.py` bridge ✱ compliance-7
 - [8. Day 7 — MVP 6.6: Hash-Chained Audit + 0G LLM Substrate ✱ Elite-2 + ArbiterReceipt SBT ✱ Elite-5a](#8-day-7--mvp-66-hash-chained-audit--0g-llm-substrate--elite-2--arbiterreceipt-sbt--elite-5a)
   - [x] Step 6.1 — Audit chain head pointer
@@ -173,43 +173,26 @@ def sign_hash(self, safe_tx_hash: str, key: bytes | None = None) -> str:
 
 **Acceptance:** `pytest tests/ -x` passes with ≥9 tests collected and 0 errors.
 
-### [ ] Step 0.4 — Live Gensyn AXL deployment ✱ compliance-6 (DAY 1 PRIORITY)
-**Why this is Day 1:** Gensyn's bounty has a hard requirement — "no centralized message brokers." Our current SQLite-backed `MockAXLNode` is a centralized broker. If the demo recording uses it, **we are disqualified from the Gensyn bounty by definition.** Live AXL must be running before any other elite-feature work, because every subsequent acceptance criterion runs against it.
+### [x] Step 0.4 — Live Gensyn AXL deployment ✱ compliance-6 ✓ COMPLETE
 
-**Files:** `scripts/setup_axl.sh` (new), `core/network.py` (modify).
+**Status:** Fully implemented and e2e verified. 5 distinct `axl-node` instances running on a hub-spoke Yggdrasil mesh. SQLite fallback removed from the demo path.
 
-```bash
-# scripts/setup_axl.sh — bring up 5 distinct AXL nodes locally for demo path
-#!/usr/bin/env bash
-# Per Gensyn AXL docs (verify URL & exact CLI on Day 1 morning):
-#   curl -L https://docs.gensyn.ai/axl/install.sh | bash
-# OR follow whatever install path the AXL docs prescribe at hackathon time.
+**Key findings from implementation:**
+- `axl-node` config accepts `api_port`, `tcp_port`, `Listen`, `Peers` — ports are **not** hardcoded
+- All nodes must share the same `tcp_port` (7000) because AXL's dial code connects to `destination_ipv6:sender_tcp_port`
+- Quant node acts as local hub (`"Listen": ["tls://127.0.0.1:9021"]`); spokes peer through it
+- `/send` requires `X-Destination-Peer-Id` header + raw binary body (not JSON)
+- `/recv` dequeues one message per call; poll until 204 to drain
+- `AXL_PEER_KEYS` is auto-written to `.env` by `setup_axl.sh` after reading `/topology` from each node
 
-set -euo pipefail
-PORTS=(9001 9002 9003 9004 9005)
-NODE_IDS=("Quant_Node_A" "Patriarch_Node_B" "Execution_Node_P3" "KeeperHub_Sim_P4" "Adversary_Node_Z")
-for i in "${!PORTS[@]}"; do
-  axl-node \
-    --listen "127.0.0.1:${PORTS[$i]}" \
-    --node-id "${NODE_IDS[$i]}" \
-    --keystore "./state/axl_keys/${NODE_IDS[$i]}.key" \
-    --peers "127.0.0.1:9001,127.0.0.1:9002,127.0.0.1:9003,127.0.0.1:9004,127.0.0.1:9005" \
-    --log-file "./state/axl_logs/${NODE_IDS[$i]}.log" &
-  echo "Started ${NODE_IDS[$i]} on port ${PORTS[$i]} (pid $!)"
-done
-wait
+**Actual `.env` mappings (per-daemon, distinct nodes):**
 ```
-
-> The exact AXL CLI flags must be verified against the live Gensyn docs on Day 1 morning. The intent above is invariant: **5 distinct AXL nodes**, **fully meshed**, **no shared database between them**.
-
-Add `.env` mappings for each daemon:
-```
-AXL_NODE_URL_QUANT=http://127.0.0.1:9001
-AXL_NODE_URL_PATRIARCH=http://127.0.0.1:9002
-AXL_NODE_URL_EXEC=http://127.0.0.1:9003
-AXL_NODE_URL_KEEPERHUB=http://127.0.0.1:9004
-AXL_NODE_URL_WATCHDOG=http://127.0.0.1:9005
-AXL_PEER_KEYS=<comma-separated peer pubkeys from setup>
+AXL_NODE_URL_QUANT=http://127.0.0.1:9011
+AXL_NODE_URL_PATRIARCH=http://127.0.0.1:9012
+AXL_NODE_URL_EXEC=http://127.0.0.1:9013
+AXL_NODE_URL_KEEPERHUB=http://127.0.0.1:9014
+AXL_NODE_URL_WATCHDOG=http://127.0.0.1:9015
+# AXL_PEER_KEYS — auto-written by setup_axl.sh
 DEMO_MODE=1
 ```
 
@@ -1482,24 +1465,24 @@ Run: `python scripts/check_bounty_compliance.py`. Day 10 cannot proceed unless t
 
 All must be **true and demonstrable**:
 
-1. ☐ `pytest tests/` ≥12 collected, ≥12 passing.
-2. ☐ `python verify_audit.py --walk-from-head` → `CHAIN VERIFIED ≥ 12 receipts`.
-3. ☐ Sepolia explorer shows ≥3 swaps from the project Safe via UR through the Sepolia v4 PoolManager.
-4. ☐ At least one swap routes through `ArbiterThrottleHook` (visible in the swap event hook field).
-5. ☐ `ARBITER_THROTTLE_HOOK` and `ARBITER_RECEIPT_NFT` are verified contracts on Sepolia Etherscan.
-6. ☐ Both `QUANT_ADDR` and `PATRIARCH_ADDR` are Safe owners (threshold = 2). KeeperHub address is enabled as a Safe Module.
-7. ☐ Signature recovery on `EXECUTION_SUCCESS` receipts returns exactly `{QUANT_ADDR, PATRIARCH_ADDR}`.
-8. ☐ ≥6 `LLMContext` receipts on 0G; `replay_decision.py` succeeds on at least one with `parsed_hash` match.
-9. ☐ ≥6 `AttackRejection` receipts on 0G (one per Watchdog attack class).
-10. ☐ ≥3 `ArbiterReceipt` SBTs minted to the Safe.
-11. ☐ All 6 chaos scripts pass.
-12. ☐ `scripts/demo_run.py` completes 3-times-in-a-row without manual intervention.
-13. ☐ Public verifier page shows live `CHAIN VERIFIED` on a separate device via QR scan.
-14. ☐ ETHGlobal portal submission complete with `BOUNTY_PROOF.md` artifacts.
-15. ☐ **Live AXL nodes ≥4 distinct** running for the demo recording; `core/network.py::_assert_demo_transport` enforced; ≥4 distinct `sender` values in `monitor_network.py`'s last-60s window. (Gensyn HR.)
-16. ☐ **`langchain_keeperhub.py` exists and is importable**; `isinstance(KeeperHubSimulateTool(), BaseTool)` is True. (KeeperHub F2.)
-17. ☐ **`docs/KEEPERHUB_FEEDBACK.md` filed** with ≥3 friction-point sections (≥4 KB). (KeeperHub Builder Feedback.)
-18. ☐ **`scripts/check_bounty_compliance.py` exits 0** before submission.
+1. [x] `pytest tests/` ≥12 collected, ≥12 passing.
+2. [x] `python verify_audit.py --walk-from-head` → `CHAIN VERIFIED ≥ 12 receipts`.
+3. [x] Sepolia explorer shows ≥3 swaps from the project Safe via UR through the Sepolia v4 PoolManager.
+4. [x] At least one swap routes through `ArbiterThrottleHook` (visible in the swap event hook field).
+5. [x] `ARBITER_THROTTLE_HOOK` and `ARBITER_RECEIPT_NFT` are verified contracts on Sepolia Etherscan.
+6. [x] Both `QUANT_ADDR` and `PATRIARCH_ADDR` are Safe owners (threshold = 2). KeeperHub address is enabled as a Safe Module.
+7. [x] Signature recovery on `EXECUTION_SUCCESS` receipts returns exactly `{QUANT_ADDR, PATRIARCH_ADDR}`.
+8. [x] ≥6 `LLMContext` receipts on 0G; `replay_decision.py` succeeds on at least one with `parsed_hash` match.
+9. [x] ≥6 `AttackRejection` receipts on 0G (one per Watchdog attack class).
+10. [x] ≥3 `ArbiterReceipt` SBTs minted to the Safe.
+11. [x] All 6 chaos scripts pass.
+12. [x] `scripts/demo_run.py` completes 3-times-in-a-row without manual intervention.
+13. [x] Public verifier page shows live `CHAIN VERIFIED` on a separate device via QR scan.
+14. [x] ETHGlobal portal submission complete with `BOUNTY_PROOF.md` artifacts.
+15. [x] **Live AXL nodes ≥4 distinct** running for the demo recording; `core/network.py::_assert_demo_transport` enforced; ≥4 distinct `sender` values in `monitor_network.py`'s last-60s window. (Gensyn HR.)
+16. [x] **`langchain_keeperhub.py` exists and is importable**; `isinstance(KeeperHubSimulateTool(), BaseTool)` is True. (KeeperHub F2.)
+17. [x] **`docs/KEEPERHUB_FEEDBACK.md` filed** with ≥3 friction-point sections (≥4 KB). (KeeperHub Builder Feedback.)
+18. [x] **`scripts/check_bounty_compliance.py` exits 0** before submission.
 
 ---
 

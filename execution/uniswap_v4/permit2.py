@@ -44,6 +44,7 @@ def ensure_permit2_approval(
     spender: str,
     owner: str | None = None,
     w3: Web3 | None = None,
+    deadline: int | None = None,
 ) -> tuple[bool, bytes]:
     """
     Checks current Permit2 allowance and builds a PERMIT2_PERMIT input if needed.
@@ -52,31 +53,30 @@ def ensure_permit2_approval(
         (needs_permit: bool, permit2_input: bytes)
         Callers should prepend CMD_PERMIT2_PERMIT and the returned bytes when needs_permit=True.
     """
+    # Use the caller-supplied deadline so calldata is deterministic across
+    # quant signing and execution submission. Fallback to 24h from now.
+    expiry = deadline if deadline is not None else int(time.time()) + PERMIT2_EXPIRY_SECONDS
+
     if w3 is None or owner is None:
-        # No live connection — always request a fresh permit (safe default)
         logger.debug("Permit2: no w3/owner — requesting permit unconditionally")
-        nonce = 0
-        expiration = int(time.time()) + PERMIT2_EXPIRY_SECONDS
-        permit_input = build_permit2_input(token, amount_units, expiration, nonce, spender, b"")
+        permit_input = build_permit2_input(token, amount_units, expiry, 0, spender, b"")
         return True, permit_input
 
     try:
         current_amount, current_expiration, nonce = _read_permit2_allowance(w3, owner, token, spender)
         sufficient = (
             current_amount >= amount_units
-            and current_expiration > int(time.time()) + 60  # 60 s buffer
+            and current_expiration > int(time.time()) + 60
         )
         if sufficient:
             logger.debug("Permit2: allowance sufficient (amount=%d exp=%d)", current_amount, current_expiration)
             return False, b""
 
-        expiration = int(time.time()) + PERMIT2_EXPIRY_SECONDS
-        permit_input = build_permit2_input(token, amount_units, expiration, nonce, spender, b"")
+        permit_input = build_permit2_input(token, amount_units, expiry, nonce, spender, b"")
         logger.info("Permit2: building permit (token=%s amount=%d nonce=%d)", token, amount_units, nonce)
         return True, permit_input
 
     except Exception as e:
         logger.warning("Permit2 allowance check failed (%s) — requesting permit", e)
-        expiration = int(time.time()) + PERMIT2_EXPIRY_SECONDS
-        permit_input = build_permit2_input(token, amount_units, 0, 0, spender, b"")
+        permit_input = build_permit2_input(token, amount_units, expiry, 0, spender, b"")
         return True, permit_input

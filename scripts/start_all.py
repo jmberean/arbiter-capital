@@ -56,12 +56,18 @@ def launch_daemon(name: str, script: str, key_env: str) -> subprocess.Popen:
     if key_env in env:
         env["AXL_NODE_KEY"] = env[key_env]
 
-    proc = subprocess.Popen(
-        cmd,
-        cwd=str(ROOT),
-        env=env,
-        creationflags=subprocess.CREATE_NEW_CONSOLE,
-    )
+    kwargs: dict = dict(cwd=str(ROOT), env=env)
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
+    else:
+        # macOS/Linux: redirect output to per-daemon log files
+        log_dir = ROOT / "state" / "daemon_logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = open(log_dir / f"{name.lower()}.log", "a")
+        kwargs["stdout"] = log_file
+        kwargs["stderr"] = log_file
+
+    proc = subprocess.Popen(cmd, **kwargs)
     return proc
 
 
@@ -119,21 +125,22 @@ def _db_count(sql: str, params: tuple = ()) -> int:
         return 0
 
 
-def wait_for_ready(timeout: int = 30):
-    """Poll until at least 3 distinct senders appear on the AXL bus (daemons talking)."""
-    print(yellow("\nWaiting for daemons to connect to AXL bus..."))
+def wait_for_ready(procs: list, timeout: int = 15):
+    """Poll until all launched daemon processes are alive."""
+    print(yellow("\nWaiting for daemons to start..."))
     deadline = time.time() + timeout
     while time.time() < deadline:
-        senders = _db_count(
-            "SELECT COUNT(DISTINCT sender) FROM messages "
-            "WHERE timestamp > ?", (time.time() - 60,)
-        )
-        if senders >= 3:
-            print(green(f"  Ready — {senders} distinct senders active on AXL bus.\n"))
+        alive = sum(1 for p in procs if p.poll() is None)
+        if alive == len(procs):
+            print(green(f"  Ready — {alive}/{len(procs)} daemons running.\n"))
             return True
-        print(f"  {senders}/3 senders online…", end="\r")
-        time.sleep(2)
-    print(yellow("\n  Timeout — proceeding anyway (daemons may still be initialising)."))
+        print(f"  {alive}/{len(procs)} daemons alive…", end="\r")
+        time.sleep(1)
+    alive = sum(1 for p in procs if p.poll() is None)
+    if alive == len(procs):
+        print(green(f"  Ready — {alive}/{len(procs)} daemons running.\n"))
+        return True
+    print(yellow(f"\n  {alive}/{len(procs)} daemons alive — check state/daemon_logs/ for errors."))
     return False
 
 
@@ -238,7 +245,7 @@ def main():
     procs = start_all()
 
     if not args.no_wait:
-        wait_for_ready(timeout=30)
+        wait_for_ready(procs, timeout=15)
 
     if args.inject:
         inject(args.inject)

@@ -213,6 +213,14 @@ def capture_llm_context_node(state: AgentState):
         else:
             p.amount_in_units = str(10 ** 18)
 
+    # Hard cap for test runs — set MAX_SWAP_UNITS in .env to limit on-chain spend
+    _max_units = os.getenv("MAX_SWAP_UNITS")
+    if _max_units:
+        try:
+            p.amount_in_units = str(min(int(p.amount_in_units), int(_max_units)))
+        except (ValueError, TypeError):
+            pass
+
     # Normalize ETH to WETH for firewall and signing
     if p.asset_in == "ETH": p.asset_in = "WETH"
     if p.asset_out == "ETH": p.asset_out = "WETH"
@@ -307,7 +315,10 @@ def sign_proposal(state: AgentState):
         return {}
 
     treasury = SafeTreasury()
-    router = UniswapV4Router()
+    router = UniswapV4Router(
+        w3=treasury.w3 if not treasury.mock_mode else None,
+        owner=treasury.safe_address if not treasury.mock_mode else None,
+    )
 
     # Pin invariants from state BEFORE digesting.
     p.quant_analysis_hash = state["quant_analysis_hash"]

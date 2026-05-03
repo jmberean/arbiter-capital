@@ -229,21 +229,22 @@ These were found and fixed during the pre-flight check:
 **Depends on:** Steps 1–8 all complete.
 
 ### What to do
-- [x] 1. Start all 5 daemons (SQLite mode for local demo):
+- [x] 1. Start all 5 AXL nodes, then all daemons:
    ```bash
+   bash scripts/setup_axl.sh   # starts 5 axl-node instances, writes AXL_PEER_KEYS to .env
    $env:PYTHONPATH="."; python scripts/start_all.py
    ```
 - [x] 2. Run `python monitor_network.py` in another terminal.
 - [x] 3. Inject a scenario:
    ```bash
-   python market_injector.py flash_crash_eth
+   python apps/market_injector.py flash_crash_eth
    ```
-- [x] 4. **STATUS (2026-05-02):** Partially Verified.
+- [x] 4. **STATUS (2026-05-02):** ✓ FULLY VERIFIED on live Gensyn AXL mesh.
   - [x] a. Quant generates valid EIP-712 signature.
   - [x] b. Patriarch successfully recovers Quant address (Consensus Verified).
-  - [x] c. **Negotiation Active:** Patriarch rejected trade due to `TIMING_RISK` guardrails.
-  - [ ] d. Real swap from Safe → Universal Router (Pending successful negotiation).
-- [ ] 5. Run `python verify_audit.py --walk-from-head` and confirm `CHAIN VERIFIED`.
+  - [x] c. 2-of-2 threshold met; execution node submits Safe tx.
+  - [x] d. Sepolia Safe tx `0x4b48ee7f` executed — Universal Router calldata with ArbiterThrottleHook, GS026-clean.
+- [x] 5. Run `python verify_audit.py --walk-from-head` and confirm `CHAIN VERIFIED`.
 
 ---
 

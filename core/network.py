@@ -42,14 +42,23 @@ def _load_node_key() -> Optional[bytes]:
 
 
 class MockAXLNode:
-    """Simulates a Gensyn AXL P2P node using a local SQLite database in dev,
-    and forwards to a live AXL bridge when AXL_NODE_URL is set."""
+    """Gensyn AXL P2P node bridge.
+
+    When AXL_NODE_URL_* is set (DEMO_MODE=1), messages are sent via the axl-node
+    HTTP API (/send with X-Destination-Peer-Id header, /recv for polling).
+    AXL is point-to-point; publish broadcasts to all peers in AXL_PEER_KEYS.
+    Received messages are buffered in _inbox keyed by topic so multi-topic
+    daemons don't lose messages across subscribe() calls.
+
+    Falls back to SQLite when no AXL URL is configured (dev mode).
+    """
 
     def __init__(self, node_id: str, url_env: str = "AXL_NODE_URL"):
         self.node_id = node_id
         self.axl_url = os.getenv(url_env)
         self.use_live_axl = self.axl_url is not None
         self.demo_mode = os.getenv("DEMO_MODE") == "1"
+        self._inbox: Dict[str, List[Dict]] = {}
 
         self._node_key = _load_node_key()
         self._node_addr = (
@@ -153,17 +162,31 @@ class MockAXLNode:
         envelope = self._build_envelope(topic, payload)
 
         if self.use_live_axl:
-            try:
-                peer_keys = [k for k in os.getenv("AXL_PEER_KEYS", "").split(",") if k]
+            peer_keys = [k for k in os.getenv("AXL_PEER_KEYS", "").split(",") if k]
+            if not peer_keys:
+                logger.warning(f"AXL_PEER_KEYS not set — {topic} will not be delivered over AXL.")
+            else:
+                msg_bytes = json.dumps({
+                    "topic": topic,
+                    "payload": payload,
+                    "sender": self.node_id,
+                    "envelope": envelope,
+                }).encode()
+                sent = 0
                 for peer in peer_keys:
-                    requests.post(f"{self.axl_url}/send", json={
-                        "to": peer,
-                        "data": {"topic": topic, "payload": payload, "sender": self.node_id, "envelope": envelope},
-                    })
-                self._write_to_db(topic, payload, envelope)
+                    try:
+                        r = requests.post(
+                            f"{self.axl_url}/send",
+                            data=msg_bytes,
+                            headers={"X-Destination-Peer-Id": peer},
+                            timeout=5,
+                        )
+                        if r.status_code == 200:
+                            sent += 1
+                    except Exception as e:
+                        logger.warning(f"AXL send to {peer[:12]}... failed: {e}")
+                logger.info(f"AXL publish: topic={topic} sent_to={sent}/{len(peer_keys)} peers")
                 return
-            except Exception as e:
-                logger.error(f"Failed to publish to LIVE AXL: {e}. Falling back to SQLite.")
 
         self._write_to_db(topic, payload, envelope)
 
@@ -175,17 +198,44 @@ class MockAXLNode:
             )
             conn.commit()
 
+    def _drain_axl_inbox(self) -> None:
+        """Pull all pending messages from /recv into per-topic buffers."""
+        while True:
+            try:
+                r = requests.get(f"{self.axl_url}/recv", timeout=2)
+                if r.status_code == 204:
+                    break
+                if r.status_code == 200:
+                    data = json.loads(r.content)
+                    msg_topic = data.get("topic")
+                    if not msg_topic:
+                        logger.debug("AXL recv: message has no topic, skipping")
+                        continue
+                    msg = {
+                        "id": int(time.time() * 1000),
+                        "payload": data.get("payload", {}),
+                        "sender": data.get("sender", r.headers.get("X-From-Peer-Id", "")),
+                        "envelope": data.get("envelope", {}),
+                    }
+                    verified = self._verify_envelope(msg["envelope"])
+                    logger.debug("AXL recv: topic=%s sender=%s verified=%s",
+                                 msg_topic, msg.get("sender", "?")[:16], verified)
+                    if verified:
+                        self._inbox.setdefault(msg_topic, []).append(msg)
+                    else:
+                        logger.warning("AXL recv: dropping unverified message topic=%s sender=%s",
+                                       msg_topic, msg.get("sender", "?")[:16])
+            except Exception as e:
+                logger.warning("AXL drain error: %s", e)
+                break
+
     def subscribe(self, topic: str, last_id: int = 0) -> List[Dict]:
         if self.use_live_axl:
             try:
-                response = requests.get(
-                    f"{self.axl_url}/receive?topic={topic}&last_id={last_id}"
-                )
-                if response.status_code == 200:
-                    msgs = response.json().get("messages", [])
-                    return [m for m in msgs if self._verify_envelope(m.get("envelope", {}))]
-            except Exception:
-                pass
+                self._drain_axl_inbox()
+                return self._inbox.pop(topic, [])
+            except Exception as e:
+                logger.warning(f"AXL subscribe failed: {e}. Falling back to SQLite.")
 
         with sqlite3.connect(DB_PATH) as conn:
             conn.row_factory = sqlite3.Row
@@ -211,6 +261,9 @@ class MockAXLNode:
         return result
 
     def clear_network(self):
+        if self.use_live_axl:
+            self._inbox.clear()
+            return
         with sqlite3.connect(DB_PATH) as conn:
             conn.execute("DELETE FROM messages")
             conn.commit()

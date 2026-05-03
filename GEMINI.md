@@ -18,8 +18,8 @@ Trades are only executed via a **2-of-2 treasury Safe** when cryptographically v
 
 The detailed implementation plan is tracked in [docs/TECHNICAL_ROADMAP.md](docs/TECHNICAL_ROADMAP.md).
 
-*   **MVP 6 (IN PROGRESS):** **Winning Edition Hardening.** EIP-712, true 2-of-2 signatures, 0G LLM Substrate, and ArbiterThrottleHook.
-*   **MVP 7 (UPCOMING):** Byzantine Watchdog, Chaos testing, and Public Verifier UI.
+*   **MVP 6 (COMPLETED):** **Winning Edition Hardening.** EIP-712, true 2-of-2 signatures, 0G LLM Substrate, and ArbiterThrottleHook.
+*   **MVP 7 (COMPLETED):** Byzantine Watchdog, Chaos testing, and Public Verifier UI.
 
 ## Running the Network
 

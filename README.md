@@ -51,6 +51,7 @@ All inter-process messages are Pydantic models over Gensyn AXL (SQLite mock in d
 ### Prerequisites
 
 - Python 3.11+, Node 18+
+- [Go 1.21+](https://go.dev/dl/) (for building `axl-node`)
 - [Foundry](https://book.getfoundry.sh/getting-started/installation) (`forge`, `cast`)
 - [uv](https://github.com/astral-sh/uv) for Python package management
 
@@ -69,6 +70,32 @@ uv pip install -r requirements.txt
 # Foundry dependencies (submodules)
 git submodule update --init --recursive
 ```
+
+### AXL Node Setup
+
+Each daemon runs its own `axl-node` instance on a distinct port, giving 5 independent Yggdrasil identities on the live Gensyn mesh. Build the binary once, then use the setup script to start all nodes.
+
+```bash
+# 1. Build axl-node from source (requires Go 1.21+)
+git clone https://github.com/gensyn-ai/axl /tmp/axl
+cd /tmp/axl && make build
+cp ./node /opt/homebrew/bin/axl-node   # or any directory on your PATH
+
+# 2. Start all 5 nodes (generates keys on first run, connects to live Gensyn peers)
+bash scripts/setup_axl.sh
+```
+
+The script creates `state/axl/<name>.pem` keys and `state/axl/<name>-config.json` configs, starts each node in the background, then prints a health check. Node logs land in `state/axl_logs/`. Stop them with `pkill -f axl-node`.
+
+Port assignments (HTTP API / internal TCP):
+
+| Daemon | API port | TCP port |
+|--------|----------|----------|
+| quant | 9011 | 7011 |
+| patriarch | 9012 | 7012 |
+| exec | 9013 | 7013 |
+| keeperhub | 9014 | 7014 |
+| watchdog | 9015 | 7015 |
 
 ### Environment
 
@@ -93,14 +120,28 @@ SAFE_ADDRESS=0xd42C17165aC8A2C69f085FAb5daf8939f983eB21
 ARBITER_THROTTLE_HOOK=0x4Fb70855Af455680075d059AD216a01A161800C0
 ARBITER_RECEIPT_NFT=0x47D6414fbf582141D4Ce54C3544C14A6057D5a04
 
-# AXL nodes (5 local nodes for demo)
-AXL_NODE_URL_QUANT=http://127.0.0.1:9001
-AXL_NODE_URL_PATRIARCH=http://127.0.0.1:9002
-AXL_NODE_URL_EXEC=http://127.0.0.1:9003
-AXL_NODE_URL_KEEPERHUB=http://127.0.0.1:9004
-AXL_NODE_URL_WATCHDOG=http://127.0.0.1:9005
+# AXL — each daemon connects to its own axl-node instance (setup_axl.sh)
+AXL_NODE_URL_QUANT=http://127.0.0.1:9011
+AXL_NODE_URL_PATRIARCH=http://127.0.0.1:9012
+AXL_NODE_URL_EXEC=http://127.0.0.1:9013
+AXL_NODE_URL_KEEPERHUB=http://127.0.0.1:9014
+AXL_NODE_URL_WATCHDOG=http://127.0.0.1:9015
+# AXL_PEER_KEYS is auto-written by setup_axl.sh — do not set manually
 DEMO_MODE=1
+
+# Cap on-chain swap size during testing (remove or raise for production)
+MAX_SWAP_UNITS=100000000000000000   # 0.1 WETH
 ```
+
+### Account Funding
+
+| Account | Key in `.env` | Needs funding? | What & how much |
+|---|---|---|---|
+| **Executor** | `EXECUTOR_PRIVATE_KEY` | Yes | ~0.05 Sepolia ETH for gas (pays `execTransaction` on the Safe) |
+| **Safe** | `SAFE_ADDRESS` (multisig) | Yes | WETH or USDC to swap — quant defaults to ~1 WETH; set `MAX_SWAP_UNITS` to cap it |
+| **0G account** | `ZERO_G_PRIVATE_KEY` | Optional | ~0.005 0G testnet ETH per run for on-chain audit writes; falls back to local files if dry |
+| **Quant** | `QUANT_PRIVATE_KEY` | No | EIP-712 signing only — no gas needed |
+| **Patriarch** | `PATRIARCH_PRIVATE_KEY` | No | EIP-712 signing only — no gas needed |
 
 ---
 
@@ -108,27 +149,30 @@ DEMO_MODE=1
 
 ### Local Demo (Recommended for Recording)
 
-Due to hardcoded port conflicts in the `axl-node.exe` binary (9002/7000), running a full 5-node mesh on a single machine requires significant network workarounds. For the demo recording, we use the **SQLite Message Bus** simulation. This maintains the 5-process isolation and EIP-712 signing but avoids the binary's port collision.
-
-1.  **Configure `.env`**:
-    *   Set `DEMO_MODE=0`
-    *   Set `SAFE_ADDRESS` to your real Sepolia Safe (for execution)
-2.  **Start all daemons**:
+1.  **Build `axl-node`** (one-time, requires Go 1.21+):
     ```bash
-    $env:PYTHONPATH="."; python scripts/start_all.py
+    git clone https://github.com/gensyn-ai/axl /tmp/axl
+    cd /tmp/axl && go build -o axl-node ./cmd/node
+    sudo mv axl-node /usr/local/bin/
     ```
-3.  **Inject Scenario**:
-    Choose `[1] Inject flash_crash_eth` from the interactive menu.
+2.  **Start all 5 AXL nodes** (leave running in background):
+    ```bash
+    bash scripts/setup_axl.sh
+    ```
+    This generates per-daemon ed25519 keys, starts a hub-spoke Yggdrasil mesh on ports 9011–9015, and writes `AXL_PEER_KEYS` to `.env` automatically.
+3.  **Start all daemons**:
+    ```bash
+    PYTHONPATH=. python scripts/start_all.py
+    ```
+4.  **Inject Scenario**: Choose `[1] Inject flash_crash_eth` from the interactive menu.
+
+Daemons fail-closed if `DEMO_MODE=1` and their AXL node is unreachable. Restart nodes with `bash scripts/setup_axl.sh` if needed.
 
 ### Multi-Machine P2P (AXL Native)
 
-To run in full decentralized mode:
-1.  **Install AXL nodes** on separate machines or containers.
-2.  **Configure `.env`**:
-    *   Set `DEMO_MODE=1`
-    *   Set `AXL_NODE_URL_QUANT`, etc. to the respective node addresses.
-    *   Set `AXL_NODE_KEY_QUANT`, etc. for envelope signing.
-3.  **Start daemons**: `python scripts/start_all.py`. The processes will fail-closed if they cannot reach the real AXL nodes.
+To distribute nodes across machines, run `setup_axl.sh` on each machine (it connects outbound to the public Gensyn peers — no inbound port forwarding needed). Point each `AXL_NODE_URL_*` in `.env` to the corresponding machine's API port.
+
+> **Note:** `setup_axl.sh` configures spoke nodes to peer through `tls://127.0.0.1:9021` (the local quant hub). For multi-machine deployments, replace that address in the script with the quant machine's reachable IP/hostname before running on the other machines.
 
 ---
 

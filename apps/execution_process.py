@@ -105,7 +105,10 @@ def run_execution_daemon():
 
     axl_node = MockAXLNode(node_id="Execution_Node_P3", url_env="AXL_NODE_URL_EXEC")
     treasury = SafeTreasury()
-    router = UniswapV4Router()
+    router = UniswapV4Router(
+        w3=treasury.w3 if not treasury.mock_mode else None,
+        owner=treasury.safe_address if not treasury.mock_mode else None,
+    )
     dedupe = DedupeLedger()
     memory_manager = MemoryManager()
 

@@ -57,7 +57,10 @@ def run_patriarch_daemon():
     firewall = PolicyFirewall()
     memory_manager = MemoryManager()
     treasury = SafeTreasury()
-    router = UniswapV4Router()
+    router = UniswapV4Router(
+        w3=treasury.w3 if not treasury.mock_mode else None,
+        owner=treasury.safe_address if not treasury.mock_mode else None,
+    )
 
     last_proposal_id = 0
     last_snapshot_id = 0
