@@ -4,19 +4,41 @@ venv/
 __pycache__/
 *.pyc
 *.pyo
+
+# Memory & DB
 0g_storage/
 chroma_db/
-test_*/
-test_0g_*/
-test_chroma_*/
-test_chroma_db/
 axl_network.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+
+# Local State & Tests
 state/
 .vscode/
 .pytest_cache/
 .claude/
+test_*/
+test_0g_*/
+test_chroma_*/
+test_chroma_db/
+
 # Foundry
 out/
 cache/
+lib/
 artifacts/
 broadcast/
+
+# Binaries
+axl-node.exe
+*.exe
+
+# Demo materials (local only, not for GitHub)
+demo/
+
+# Logs
+*.log

@@ -4,6 +4,7 @@ import json
 import uuid
 import os
 from dotenv import load_dotenv
+load_dotenv(override=True)  # must run before core.identity is imported so keys are available at eval time
 from core.network import MockAXLNode
 from core.models import Proposal, ConsensusStatus, ConsensusMessage
 from core.identity import QUANT_ADDR
@@ -36,13 +37,17 @@ def run_quant_daemon():
     logger.info("Initializing Quant Process (Node A)...")
     axl_node = MockAXLNode(node_id="Quant_Node_A", url_env="AXL_NODE_URL_QUANT")
     treasury = SafeTreasury()
-    router = UniswapV4Router()
+    router = UniswapV4Router(  # noqa: F841 — kept for potential future use in this process
+        w3=treasury.w3 if not treasury.mock_mode else None,
+        owner=treasury.safe_address if not treasury.mock_mode else None,
+    )
 
     last_market_id = 0
     last_feedback_id = 0
     proposal_history = {}
 
     logger.info("Quant listening for Market Data and Patriarch Feedback...")
+    axl_node.publish("HEARTBEAT", {"node_id": "Quant_Node_A", "role": "quant", "timestamp": time.time(), "status": "ready"})
 
     while True:
         try:
@@ -58,9 +63,6 @@ def run_quant_daemon():
                 proposal: Proposal = result.get("current_proposal")
 
                 if proposal:
-                    if not proposal.proposal_id or proposal.proposal_id == "uuid_placeholder":
-                        proposal.proposal_id = f"prop_{uuid.uuid4().hex[:8]}"
-
                     # Publish the market snapshot so the Patriarch can recompute
                     axl_node.publish(topic="MARKET_SNAPSHOTS", payload={
                         "market_snapshot_hash": result.get("market_snapshot_hash") or proposal.market_snapshot_hash,
@@ -73,6 +75,8 @@ def run_quant_daemon():
                     # Publish Quant's own consensus signature so Execution Node can collect it
                     cmsg = _quant_consensus_msg(proposal)
                     if cmsg:
+                        import time as _time
+                        _time.sleep(1.0)
                         axl_node.publish(topic="CONSENSUS_SIGNATURES", payload=cmsg.model_dump())
                         logger.info(f"Published Quant CONSENSUS_SIGNATURE for {proposal.proposal_id}")
 
@@ -103,13 +107,12 @@ def run_quant_daemon():
                                 "messages": history["messages"],
                                 "iteration": history["iteration"],
                                 "patriarch_feedback": evaluation["rationale"],
+                                "proposal_id": f"{prop_id}_v{history['iteration'] + 1}"
                             }
                             result = quant_app.invoke(state)
                             new_proposal: Proposal = result.get("current_proposal")
 
                             if new_proposal:
-                                new_proposal.proposal_id = f"{prop_id}_v{history['iteration'] + 1}"
-
                                 axl_node.publish(topic="MARKET_SNAPSHOTS", payload={
                                     "market_snapshot_hash": result.get("market_snapshot_hash") or new_proposal.market_snapshot_hash,
                                     "market_data": history["market_data"],
@@ -119,8 +122,9 @@ def run_quant_daemon():
 
                                 cmsg = _quant_consensus_msg(new_proposal)
                                 if cmsg:
-                                    axl_node.publish(topic="CONSENSUS_SIGNATURES", payload=cmsg.model_dump())
-
+                                   import time as _time
+                                   _time.sleep(1.0)
+                                   axl_node.publish(topic="CONSENSUS_SIGNATURES", payload=cmsg.model_dump())
                                 proposal_history[new_proposal.proposal_id] = {
                                     "market_data": history["market_data"],
                                     "iteration": result.get("iteration", history["iteration"] + 1),
@@ -142,7 +146,7 @@ def run_quant_daemon():
 
 
 if __name__ == "__main__":
-    load_dotenv()
+    load_dotenv(override=True)
     if not os.getenv("OPENAI_API_KEY"):
         logger.error("CRITICAL: OPENAI_API_KEY environment variable is not set.")
         exit(1)

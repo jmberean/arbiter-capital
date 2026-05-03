@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("PolicyFirewall")
 
 # Hardcoded institutional constraints (not LLM-controllable).
-WHITELISTED_ASSETS = {"WETH", "USDC", "stETH", "WBTC", "PT-USDC"}
+WHITELISTED_ASSETS = {"WETH", "USDC", "stETH", "WBTC", "PT-USDC", "SOL", "PENDLE"}
 ALLOWED_PROTOCOLS = {"Uniswap_V4", "Lido", "Pendle"}
 ALLOWED_HOOKS = {
     os.getenv("V4_HOOK_VOL_ORACLE"),
@@ -39,6 +39,8 @@ class MarketOracle:
             "WBTC": 65000.0,
             "stETH": 3510.0,
             "PT-USDC": 0.92,
+            "PENDLE": 3.50,
+            "SOL": 150.0,
         }
 
     def get_price(self, asset: str) -> float:

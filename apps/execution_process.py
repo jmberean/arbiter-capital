@@ -6,6 +6,7 @@ import time
 import threading
 
 from dotenv import load_dotenv
+load_dotenv(override=True)  # must run before core.identity is imported so keys are available at eval time
 from eth_utils import keccak
 
 from core.crypto import recover_signer
@@ -104,7 +105,10 @@ def run_execution_daemon():
 
     axl_node = MockAXLNode(node_id="Execution_Node_P3", url_env="AXL_NODE_URL_EXEC")
     treasury = SafeTreasury()
-    router = UniswapV4Router()
+    router = UniswapV4Router(
+        w3=treasury.w3 if not treasury.mock_mode else None,
+        owner=treasury.safe_address if not treasury.mock_mode else None,
+    )
     dedupe = DedupeLedger()
     memory_manager = MemoryManager()
 
@@ -128,11 +132,21 @@ def run_execution_daemon():
     while True:
         try:
             # 1. Drain CONSENSUS_SIGNATURES
+            _now = time.time()
             sig_messages = axl_node.subscribe(topic="CONSENSUS_SIGNATURES", last_id=last_sig_id)
             for msg in sig_messages:
                 last_sig_id = msg["id"]
                 sig_data = ConsensusMessage(**msg["payload"])
                 prop_id = sig_data.proposal_id
+
+                # Discard signatures older than 10 minutes — they belong to a previous
+                # daemon session and were signed against a different safe_tx_hash.
+                age = _now - (sig_data.timestamp or 0)
+                if age > 600:
+                    logger.warning(
+                        f"Discarding stale signature for {prop_id} (age={age:.0f}s)"
+                    )
+                    continue
 
                 slot = pending_proposals.setdefault(prop_id, {"proposal": None, "signatures": []})
                 if sig_data.signature not in slot["signatures"]:
@@ -270,5 +284,5 @@ def run_execution_daemon():
 
 
 if __name__ == "__main__":
-    load_dotenv()
+    load_dotenv(override=True)
     run_execution_daemon()

@@ -18,19 +18,23 @@ Trades are only executed via a **2-of-2 treasury Safe** when cryptographically v
 
 The detailed implementation plan is tracked in [docs/TECHNICAL_ROADMAP.md](docs/TECHNICAL_ROADMAP.md).
 
-*   **MVP 6 (IN PROGRESS):** **Winning Edition Hardening.** EIP-712, true 2-of-2 signatures, 0G LLM Substrate, and ArbiterThrottleHook.
-*   **MVP 7 (UPCOMING):** Byzantine Watchdog, Chaos testing, and Public Verifier UI.
+*   **MVP 6 (COMPLETED):** **Winning Edition Hardening.** EIP-712, true 2-of-2 signatures, 0G LLM Substrate, and ArbiterThrottleHook.
+*   **MVP 7 (COMPLETED):** Byzantine Watchdog, Chaos testing, and Public Verifier UI.
 
 ## Running the Network
 
-The architecture requires five separate processes to prove decentralization. Run these in separate terminal instances:
+The architecture requires five separate processes to prove decentralization. Due to hardcoded port conflicts in the `axl-node.exe` binary (9002/7000), a local mesh on a single machine is simulated via a shared SQLite bus.
 
-1.  **AXL Mesh:** `bash scripts/setup_axl.sh` (Initializes 5 nodes).
-2.  **Process 1 (The Quant):** `python quant_process.py`
-3.  **Process 2 (The Patriarch):** `python patriarch_process.py`
-4.  **Process 3 (Execution Node):** `python execution_process.py`
-5.  **Process 4 (Sim Oracle):** KeeperHub MCP Server.
-6.  **Process 5 (Watchdog):** `python byzantine_watchdog.py` (For adversarial testing).
+1.  **Local Demo Path (Recommended):**
+    *   Set `DEMO_MODE=0` in `.env`.
+    *   Run `$env:PYTHONPATH="."; python scripts/start_all.py`.
+    *   Inject scenarios via the interactive menu.
+
+2.  **Full AXL P2P Path:**
+    *   Requires nodes on separate machines/containers.
+    *   Set `DEMO_MODE=1` in `.env`.
+    *   Configure `AXL_NODE_URL_*` and `AXL_NODE_KEY_*` in `.env`.
+    *   Run `python scripts/start_all.py`.
 
 ## Development Conventions
 

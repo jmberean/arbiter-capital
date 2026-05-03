@@ -50,6 +50,16 @@ ADDRESS_BY_SYMBOL: Dict[str, str] = {
 _ZERO_BYTES32 = "0x" + "00" * 32
 
 
+def _safe_int(v, default: int = 0) -> int:
+    """Convert v to int, returning default on any failure (handles LLM string garbage)."""
+    if v is None:
+        return default
+    try:
+        return int(v)
+    except (ValueError, TypeError):
+        return default
+
+
 def _hex_to_bytes32(h: Optional[str]) -> bytes:
     """Convert a 0x-prefixed 32-byte hex string to raw bytes (32 bytes).
     Returns 32 zero bytes if h is falsy."""
@@ -144,15 +154,15 @@ class Proposal(BaseModel):
             "action":              self.action.value if isinstance(self.action, ActionType) else str(self.action),
             "asset_in":            _resolve_address(self.asset_in),
             "asset_out":           _resolve_address(self.asset_out),
-            "amount_in_units":     int(self.amount_in_units or 0),
-            "min_amount_out_units": int(self.min_amount_out_units or 0),
-            "deadline_unix":       int(self.deadline_unix or 0),
-            "projected_apy_bps":   int(self.projected_apy_bps or 0),
-            "risk_score_bps":      int(self.risk_score_bps or 0),
+            "amount_in_units":     _safe_int(self.amount_in_units),
+            "min_amount_out_units": _safe_int(self.min_amount_out_units),
+            "deadline_unix":       _safe_int(self.deadline_unix),
+            "projected_apy_bps":   _safe_int(self.projected_apy_bps),
+            "risk_score_bps":      _safe_int(self.risk_score_bps),
             "quant_analysis_hash": _hex_to_bytes32(self.quant_analysis_hash),
             "market_snapshot_hash": _hex_to_bytes32(self.market_snapshot_hash),
             "llm_context_hash":    _hex_to_bytes32(self.llm_context_hash),
-            "safe_nonce":          int(self.safe_nonce or 0),
+            "safe_nonce":          _safe_int(self.safe_nonce),
         }
 
 

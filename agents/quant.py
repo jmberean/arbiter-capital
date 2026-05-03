@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import operator
+import time
 from typing import TypedDict, Annotated, Sequence, Optional
 
 from dotenv import load_dotenv
@@ -19,7 +20,7 @@ from execution.uniswap_v4.router import UniswapV4Router
 from memory.llm_context_writer import capture_and_persist
 from memory.memory_manager import MemoryManager
 
-load_dotenv()
+load_dotenv(override=True)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("QuantAgent")
@@ -170,6 +171,114 @@ def capture_llm_context_node(state: AgentState):
     if p is None:
         return {}
 
+    logger.info(f"CAPTURING CONTEXT for {p.proposal_id}")
+    logger.info(f"  Current min_amount_out_units: {p.min_amount_out_units}")
+    logger.info(f"  Action: {p.action}")
+
+    # Pin invariants from state so self_audit and signing can use them.
+    # The LLM cannot reliably reproduce these values — they must come from state.
+    p.quant_analysis_hash = state["quant_analysis_hash"]
+    p.market_snapshot_hash = state.get("market_snapshot_hash")
+    
+    # Pin iteration and ensure proposal_id is set before signing
+    p.iteration = state.get("iteration", 1)
+    
+    # Use proposal_id from state if provided (for iterations)
+    state_prop_id = state.get("proposal_id")
+    if state_prop_id:
+        p.proposal_id = state_prop_id
+    
+    if not p.proposal_id or p.proposal_id == "uuid_placeholder":
+        import uuid
+        p.proposal_id = f"prop_{uuid.uuid4().hex[:8]}"
+
+    # Ensure amount_in_units and min_amount_out_units are valid integer strings — LLM often omits or mis-formats them.
+    from core.models import DECIMALS_BY_SYMBOL
+    
+    # Sanitize amount_in_units
+    valid_in = False
+    if p.amount_in_units is not None:
+        try:
+            int(p.amount_in_units)
+            valid_in = True
+        except (ValueError, TypeError):
+            pass
+    if not valid_in:
+        if p.amount_in is not None:
+            try:
+                d = DECIMALS_BY_SYMBOL.get(p.asset_in or "WETH", 18)
+                p.amount_in_units = str(int(float(p.amount_in) * (10 ** d)))
+            except (ValueError, TypeError):
+                p.amount_in_units = str(10 ** 18)
+        else:
+            p.amount_in_units = str(10 ** 18)
+
+    # Hard cap for test runs — set MAX_SWAP_UNITS in .env to limit on-chain spend
+    _max_units = os.getenv("MAX_SWAP_UNITS")
+    if _max_units:
+        try:
+            p.amount_in_units = str(min(int(p.amount_in_units), int(_max_units)))
+        except (ValueError, TypeError):
+            pass
+
+    # Normalize ETH to WETH for firewall and signing
+    if p.asset_in == "ETH": p.asset_in = "WETH"
+    if p.asset_out == "ETH": p.asset_out = "WETH"
+
+    # Sanitize min_amount_out_units
+    valid_out = False
+    if p.min_amount_out_units is not None:
+        try:
+            if int(p.min_amount_out_units) > 0:
+                valid_out = True
+        except (ValueError, TypeError):
+            pass
+            
+    if not valid_out:
+        logger.info(f"  min_amount_out_units invalid/missing, estimating for {p.action}...")
+        if p.action == ActionType.SWAP:
+            # Estimate min_amount_out with 1% slippage
+            try:
+                from core.models import DECIMALS_BY_SYMBOL
+                market_data = state.get("market_data", {})
+                assets = market_data.get("assets", {})
+                
+                asset_in = p.asset_in or "WETH"
+                asset_out = p.asset_out or "USDC"
+                
+                # Normalize ETH to WETH for lookup
+                if asset_in == "ETH": asset_in = "WETH"
+                if asset_out == "ETH": asset_out = "WETH"
+                
+                price_in = assets.get(asset_in, {}).get("price", 0.0)
+                price_out = assets.get(asset_out, {}).get("price", 1.0)
+                
+                logger.info(f"    Prices: {asset_in}={price_in}, {asset_out}={price_out}")
+                
+                if price_in > 0 and price_out > 0:
+                    amount_in = float(p.amount_in) if p.amount_in else float(int(p.amount_in_units) / (10**DECIMALS_BY_SYMBOL.get(asset_in, 18)))
+                    expected_out = (amount_in * price_in) / price_out
+                    min_out = expected_out * 0.99 # 1% slippage
+                    
+                    d_out = DECIMALS_BY_SYMBOL.get(asset_out, 18)
+                    p.min_amount_out_units = str(int(min_out * (10 ** d_out)))
+                    logger.info(f"    CALCULATED min_amount_out_units: {p.min_amount_out_units}")
+                else:
+                    logger.warning("    Price data missing, defaulting to 0")
+                    p.min_amount_out_units = "0"
+            except Exception as e:
+                logger.warning(f"    Failed to estimate min_amount_out: {e}")
+                p.min_amount_out_units = "0"
+        else:
+            logger.info("    Not a swap, defaulting to 0")
+            p.min_amount_out_units = "0"
+
+    # Force a deterministic deadline (now + 20 minutes) to avoid LLM oscillation
+    # and satisfy Patriarch timing risk guardrails.
+    current_time = int(time.time())
+    p.deadline_unix = current_time + 1200 # 20 minutes
+    logger.info(f"  FORCED deadline_unix: {p.deadline_unix} (now + 20m)")
+
     ctx_hash, tx_hash = capture_and_persist(
         agent="Quant_Node_A",
         proposal_id=p.proposal_id,
@@ -206,7 +315,10 @@ def sign_proposal(state: AgentState):
         return {}
 
     treasury = SafeTreasury()
-    router = UniswapV4Router()
+    router = UniswapV4Router(
+        w3=treasury.w3 if not treasury.mock_mode else None,
+        owner=treasury.safe_address if not treasury.mock_mode else None,
+    )
 
     # Pin invariants from state BEFORE digesting.
     p.quant_analysis_hash = state["quant_analysis_hash"]

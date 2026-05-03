@@ -8,7 +8,7 @@ Usage in any LangGraph agent:
     agent = create_react_agent(llm, tools)
 
 Configuration via env:
-    KEEPERHUB_SERVER_PATH    - path to the KeeperHub MCP server binary/script
+    KEEPERHUB_SERVER_PATH    - path to the KeeperHub MCP server (*.py or *.js)
     SAFE_ADDRESS             - the Safe to operate on
 """
 from __future__ import annotations
@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sys
 from typing import Optional, Type
 
 from langchain_core.tools import BaseTool
@@ -42,6 +43,8 @@ class _SimulateInput(BaseModel):
     value: int = Field(0, description="Wei to send.")
     data_hex: str = Field(..., description="Calldata hex (with or without 0x prefix).")
     operation: int = Field(0, description="0=CALL, 1=DELEGATECALL.")
+    proposal_id: str = Field("mock", description="Proposal ID for attestor digest.")
+    iteration: int = Field(0, description="Proposal iteration for attestor digest.")
 
 
 class _ExecuteInput(_SimulateInput):
@@ -52,16 +55,52 @@ class _ExecuteInput(_SimulateInput):
 # MCP transport helper
 # ---------------------------------------------------------------------------
 
+def _server_command(server_path: str) -> tuple[str, list[str]]:
+    """Return (command, args) to launch the MCP server."""
+    if server_path.endswith(".py"):
+        return sys.executable, [server_path]
+    return "node", [server_path]
+
+
+def _mock_simulate(args: dict) -> dict:
+    """Dev-mode mock: signs with KEEPERHUB_ATTESTOR_KEY if set, else returns zero sig."""
+    sim = {
+        "success": True,
+        "gas_used": 120_000,
+        "return_data": "0x",
+        "revert_reason": None,
+        "fork_block": 0,
+    }
+    key_hex = os.environ.get("KEEPERHUB_ATTESTOR_KEY", "")
+    if key_hex and not key_hex.startswith("0xabc") and key_hex != "0x" + "0" * 64:
+        try:
+            from core.crypto import sim_result_digest, sign_digest
+            digest = sim_result_digest(
+                proposal_id=args.get("proposal_id", "mock"),
+                iteration=args.get("iteration", 0),
+                success=True,
+                gas_used=sim["gas_used"],
+                return_data=sim["return_data"],
+                fork_block=sim["fork_block"],
+            )
+            key_bytes = bytes.fromhex(key_hex[2:] if key_hex.startswith("0x") else key_hex)
+            sim["simulator_signature"] = "0x" + sign_digest(digest, key_bytes)
+        except Exception:
+            sim["simulator_signature"] = "0x" + "00" * 65
+    else:
+        sim["simulator_signature"] = "0x" + "00" * 65
+    return sim
+
+
 async def _mcp_call(tool_name: str, args: dict) -> dict:
     server_path = os.environ.get("KEEPERHUB_SERVER_PATH")
     if not server_path or not HAS_MCP:
-        # Mock path: return a plausible success response for dev/testing
         if tool_name == "simulate_safe_tx":
-            return {"success": True, "gas_used": 120000, "return_data": "0x",
-                    "revert_reason": None, "fork_block": 0, "simulator_signature": "0x" + "00" * 65}
+            return _mock_simulate(args)
         return {"tx_hash": f"mock_tx_{os.urandom(4).hex()}"}
 
-    params = StdioServerParameters(command="node", args=[server_path], env=os.environ.copy())
+    command, cmd_args = _server_command(server_path)
+    params = StdioServerParameters(command=command, args=cmd_args, env=os.environ.copy())
     async with stdio_client(params) as (r, w):
         async with ClientSession(r, w) as session:
             await session.initialize()
@@ -83,16 +122,23 @@ class KeeperHubSimulateTool(BaseTool):
     )
     args_schema: Type[BaseModel] = _SimulateInput
 
-    def _run(self, to: str, value: int = 0, data_hex: str = "0x", operation: int = 0) -> str:
-        return json.dumps(asyncio.run(self._arun(to=to, value=value, data_hex=data_hex, operation=operation)))
+    def _run(self, to: str, value: int = 0, data_hex: str = "0x", operation: int = 0,
+             proposal_id: str = "mock", iteration: int = 0) -> str:
+        return json.dumps(asyncio.run(self._arun(
+            to=to, value=value, data_hex=data_hex, operation=operation,
+            proposal_id=proposal_id, iteration=iteration,
+        )))
 
-    async def _arun(self, to: str, value: int = 0, data_hex: str = "0x", operation: int = 0) -> dict:
+    async def _arun(self, to: str, value: int = 0, data_hex: str = "0x", operation: int = 0,
+                    proposal_id: str = "mock", iteration: int = 0) -> dict:
         return await _mcp_call("simulate_safe_tx", {
             "safe_address": os.environ.get("SAFE_ADDRESS", ""),
             "to": to,
             "value": value,
             "data": data_hex if data_hex.startswith("0x") else "0x" + data_hex,
             "operation": operation,
+            "proposal_id": proposal_id,
+            "iteration": iteration,
         })
 
 
@@ -105,14 +151,16 @@ class KeeperHubExecuteTool(BaseTool):
     args_schema: Type[BaseModel] = _ExecuteInput
 
     def _run(self, to: str, value: int = 0, data_hex: str = "0x",
-             operation: int = 0, signatures_hex: str = "") -> str:
+             operation: int = 0, signatures_hex: str = "",
+             proposal_id: str = "mock", iteration: int = 0) -> str:
         return json.dumps(asyncio.run(self._arun(
             to=to, value=value, data_hex=data_hex,
             operation=operation, signatures_hex=signatures_hex,
         )))
 
     async def _arun(self, to: str, value: int = 0, data_hex: str = "0x",
-                    operation: int = 0, signatures_hex: str = "") -> dict:
+                    operation: int = 0, signatures_hex: str = "",
+                    proposal_id: str = "mock", iteration: int = 0) -> dict:
         return await _mcp_call("execute_safe_transaction", {
             "safe_address": os.environ.get("SAFE_ADDRESS", ""),
             "to": to,

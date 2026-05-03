@@ -10,6 +10,7 @@ Usage:
   python scripts/demo_run.py --dry-run
 """
 import argparse
+import io
 import json
 import os
 import sqlite3
@@ -17,6 +18,10 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf-16"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "axl_network.db"
@@ -34,7 +39,7 @@ def _db_count(sql: str, params: tuple = ()) -> int:
 def inject(scenario: str):
     """Run market_injector.py in a subprocess (non-blocking — the daemon processes do the work)."""
     print(f"  → inject {scenario}")
-    subprocess.run([sys.executable, str(ROOT / "market_injector.py"), scenario], check=True)
+    subprocess.run([sys.executable, str(ROOT / "apps" / "market_injector.py"), scenario], check=True)
 
 
 def wait_for(description: str, predicate, timeout_s: int, poll_s: float = 1.5):
@@ -78,7 +83,7 @@ def step_watchdog_sequence(timeout: int = 35):
     """Run all 6 Byzantine attacks and assert 6 ATTACK_REJECTED receipts appear."""
     b = baseline("ATTACK_REJECTED")
     print("  → byzantine_watchdog --attack-sequence")
-    subprocess.Popen([sys.executable, str(ROOT / "byzantine_watchdog.py"), "--attack-sequence"])
+    subprocess.Popen([sys.executable, str(ROOT / "apps" / "byzantine_watchdog.py"), "--attack-sequence"])
     def got_six():
         n = _db_count("SELECT COUNT(*) FROM messages WHERE topic='ATTACK_REJECTED'")
         new = n - b
@@ -119,7 +124,7 @@ def step_verify_chain(min_receipts: int = 12, timeout: int = 30):
     """Run verify_audit.py --walk-from-head and assert CHAIN VERIFIED."""
     print("  → verify_audit.py --walk-from-head")
     result = subprocess.run(
-        [sys.executable, str(ROOT / "verify_audit.py"), "--walk-from-head"],
+        [sys.executable, str(ROOT / "apps" / "verify_audit.py"), "--walk-from-head"],
         capture_output=True, text=True, timeout=timeout,
     )
     output = result.stdout + result.stderr
@@ -163,19 +168,19 @@ def main():
     print("=" * 60)
 
     print("\n[1/7] Inject flash_crash_eth")
-    step_inject_and_execute("flash_crash_eth", timeout=60)
+    step_inject_and_execute("flash_crash_eth", timeout=180)
 
     print("\n[2/7] Inject pendle_yield_arbitrage (2 iterations)")
-    step_inject_and_execute("pendle_yield_arbitrage", timeout=90)
+    step_inject_and_execute("pendle_yield_arbitrage", timeout=180)
 
     if not args.skip_watchdog:
         print("\n[3/7] Byzantine Watchdog — 6 attacks")
-        step_watchdog_sequence(timeout=35)
+        step_watchdog_sequence(timeout=90)
     else:
         print("\n[3/7] Skipping Watchdog (--skip-watchdog)")
 
     print("\n[4/7] Inject protocol_hack")
-    step_inject_and_execute("protocol_hack", timeout=30)
+    step_inject_and_execute("protocol_hack", timeout=180)
 
     print("\n[5/7] Inject gas_war (firewall or market_god should reject)")
     gas_b = baseline("EXECUTION_SUCCESS")

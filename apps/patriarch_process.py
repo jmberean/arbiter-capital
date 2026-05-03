@@ -7,6 +7,7 @@ import time
 import uuid
 
 from dotenv import load_dotenv
+load_dotenv(override=True)  # must run before core.identity is imported so keys are available at eval time
 
 from core.crypto import (
     proposal_eip712_digest, bundle_hash, sign_digest, recover_signer,
@@ -56,7 +57,10 @@ def run_patriarch_daemon():
     firewall = PolicyFirewall()
     memory_manager = MemoryManager()
     treasury = SafeTreasury()
-    router = UniswapV4Router()
+    router = UniswapV4Router(
+        w3=treasury.w3 if not treasury.mock_mode else None,
+        owner=treasury.safe_address if not treasury.mock_mode else None,
+    )
 
     last_proposal_id = 0
     last_snapshot_id = 0
@@ -64,6 +68,7 @@ def run_patriarch_daemon():
     snapshot_cache: dict[str, dict] = {}
 
     logger.info("Patriarch listening for Proposals and Market Snapshots...")
+    axl_node.publish("HEARTBEAT", {"node_id": "Patriarch_Node_B", "role": "patriarch", "timestamp": time.time(), "status": "ready"})
 
     while True:
         try:
@@ -178,6 +183,7 @@ def run_patriarch_daemon():
                     "incoming_proposal": proposal,
                     "messages": [],
                     "market_data": market_data,
+                    "router": router,
                 }
                 result = patriarch_app.invoke(state)
                 reviewed_proposal: Proposal = result.get("reviewed_proposal")
@@ -256,6 +262,8 @@ def run_patriarch_daemon():
                                     safe_tx_hash=reviewed_proposal.safe_tx_hash,
                                     timestamp=time.time(),
                                 )
+                                import time as _time
+                                _time.sleep(1.0)
                                 axl_node.publish(
                                     topic="CONSENSUS_SIGNATURES",
                                     payload=consensus_msg.model_dump(),
@@ -297,5 +305,5 @@ def run_patriarch_daemon():
 
 
 if __name__ == "__main__":
-    load_dotenv()
+    load_dotenv(override=True)
     run_patriarch_daemon()

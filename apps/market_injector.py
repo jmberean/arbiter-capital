@@ -1,5 +1,7 @@
 import logging
 import sys
+from dotenv import load_dotenv
+load_dotenv(override=True)
 from core.market_god import generate_market_data
 from core.network import MockAXLNode
 

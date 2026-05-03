@@ -58,6 +58,7 @@ def test_safe_treasury_mock():
     assert tx_hash.startswith("0x")
 
 def test_keeper_hub_mock():
+    os.environ.pop("KEEPERHUB_SERVER_PATH", None)
     client = KeeperHubClient()
     proposal = Proposal(
         proposal_id="exec_003",

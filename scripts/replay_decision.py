@@ -136,6 +136,7 @@ def replay(tx_hash: str | None = None, proposal_id: str | None = None):
         print("\n⚠ Raw response differs (expected at temperature > 0).")
         print("  The schema-bound parsed_hash is the canonical reproducibility proof.")
         print("  Run with temperature=0 and seed= set to get byte-identical raw output.")
+        return True  # parsed_hash present = structured decision is reproducible
     else:
         print("\n⚠ No parsed_hash stored — cannot confirm structured-output reproducibility.")
 
