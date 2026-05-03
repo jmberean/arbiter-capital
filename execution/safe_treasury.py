@@ -177,7 +177,16 @@ class SafeTreasury:
         )
         if len(digest) != 32:
             raise ValueError(f"safe_tx_hash must be 32 bytes, got {len(digest)}")
-        return Account.unsafe_sign_hash(digest, signing_key).signature.hex()
+        
+        # Safe requirement: Standard ECDSA signatures over the tx-hash 
+        # must have their 'v' parameter increased by 4 (to 31 or 32).
+        signed = Account.unsafe_sign_hash(digest, signing_key)
+        v = signed.v + 4
+        # Reconstruct sig: r(32) + s(32) + v(1)
+        sig_hex = signed.r.to_bytes(32, 'big').hex() + \
+                  signed.s.to_bytes(32, 'big').hex() + \
+                  hex(v)[2:]
+        return sig_hex
 
     def execute_with_signatures(self, proposal: Proposal, calldata: bytes,
                                 signatures: list) -> str:
